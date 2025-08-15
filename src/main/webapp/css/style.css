@@ -1,0 +1,99 @@
+@import "https://fonts.googleapis.com/css?family=Ubuntu";
+body{font-family: 'Ubuntu', sans-serif;}
+.box-menu{
+    position: absolute;
+    left: 50px;
+    top: 50px;
+    cursor: pointer;
+    background: #1d4ed8;
+    width: 60px;
+    height: 60px;
+    box-shadow: 2px 3px 5px rgba(0,0,0,0.3);
+    border-radius: 60px;
+    transition: height .4s;
+}
+.full-menu{height: 370px;}
+.wrapper{
+    position: relative;
+    width: 60px;
+    height: 60px;
+}
+.hamburguer{
+    position: absolute;
+    left: 22px;
+    top: 22px;
+    width: 16px;
+    height: 16px;
+}
+.hamburguer span{
+    position: absolute;
+    display: inline-block;
+    height: 2px;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 10px;
+    transition: all .3s;
+}
+.hamburguer span:nth-child(1){top: 3px;}
+.hamburguer span:nth-child(2){top: 8px;}
+.hamburguer span:nth-child(3){top: 8px;}
+.hamburguer span:nth-child(4){top: 13px;}
+
+.hamburguer.active span:nth-child(1){width: 0; margin-left: 8px;}
+.hamburguer.active span:nth-child(2){transform: rotate(45deg);}
+.hamburguer.active span:nth-child(3){transform: rotate(-45deg);}
+.hamburguer.active span:nth-child(4){width: 0; margin-left: -8px;}
+
+.menu{
+    position: relative;
+    left: -9999px;
+}
+
+.menu a{
+    white-space: nowrap;
+    position: relative;
+    display: inline-block;
+    color: #991b1b;
+    text-decoration: none;
+    width: 150px;
+    height: 58px;
+    line-height: 58px;
+    font-family: 'Ubuntu', sans-serif;
+}
+.menu a::after{
+    content: '';
+    position: absolute;
+    left: 50px;
+    width: 15px;
+    transition: height .3s, top .3s;
+    transform: rotateZ(43deg);
+}
+.menu a.active::after{top: 19px; height: 20px;}
+.menu a span{opacity: 0; display: inline-block; font-size: 14px}
+.menu a span.icon{
+    transform: scale(.5);
+    color: #d1fae5;
+    font-size: 18px;
+    display: inline-block;
+    width: 60px;
+    text-align: center;
+    transition: transform .3s;
+}
+.menu a span.text{
+    text-shadow: 1px 1px 0px rgba(0,0,0,0.3);
+    opacity: 0;
+    margin-left: 40px;
+    color: #d1fae5;
+    transition: margin .3s, opacity .3s, transform .3s;
+}
+.full-menu .menu{left: 0;}
+.full-menu .menu a:hover span{opacity: 1;}
+.full-menu .menu a span{opacity: .8}
+.full-menu .menu a span.icon{transform: scale(1.1);}
+.full-menu .menu a span.text{margin-left: 25px;}
+.full-menu .menu a:hover span.text {transform: translateX(5px); transition-delay: 0s;}
+
+.menu a:nth-child(1){transition: all .5s .1s, opacity .5s 0s, transform .5s 0s;}
+.menu a:nth-child(2){transition: all .5s .15s, opacity .5s 0s, transform .5s 0s;}
+.menu a:nth-child(3){transition: all .5s .2s, opacity .5s 0s, transform .5s 0s;}
+.menu a:nth-child(4){transition: all .5s .25s, opacity .5s 0s, transform .5s 0s;}
