@@ -1,10 +1,16 @@
 @import "https://fonts.googleapis.com/css?family=Ubuntu";
 body{font-family: 'Ubuntu', sans-serif;}
+/* Asegura que los selects y sus opciones usen la misma tipografía que el body */
+select, option { font-family: inherit; }
+
 .box-menu{
     position: absolute;
-    left: 50px;
+    left: 200px;
     top: 50px;
-    cursor: pointer;
+    cursor: grab; /* indica que se puede arrastrar */
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none; /* mejor control táctil */
     background: #1d4ed8;
     width: 60px;
     height: 60px;
@@ -12,6 +18,7 @@ body{font-family: 'Ubuntu', sans-serif;}
     border-radius: 60px;
     transition: height .4s;
 }
+.box-menu.dragging{ cursor: grabbing; }
 .full-menu{height: 370px;}
 .wrapper{
     position: relative;
@@ -72,7 +79,7 @@ body{font-family: 'Ubuntu', sans-serif;}
 .menu a span{opacity: 0; display: inline-block; font-size: 14px}
 .menu a span.icon{
     transform: scale(.5);
-    color: #d1fae5;
+    color: #ffffff;
     font-size: 18px;
     display: inline-block;
     width: 60px;
@@ -83,7 +90,7 @@ body{font-family: 'Ubuntu', sans-serif;}
     text-shadow: 1px 1px 0px rgba(0,0,0,0.3);
     opacity: 0;
     margin-left: 40px;
-    color: #d1fae5;
+    color: #1d4ed8;
     transition: margin .3s, opacity .3s, transform .3s;
 }
 .full-menu .menu{left: 0;}

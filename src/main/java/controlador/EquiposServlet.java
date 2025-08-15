@@ -275,17 +275,23 @@ public class EquiposServlet extends HttpServlet {
                 boolean ok = equipoDAO.actualizar(e);
                 if (ok && fromAsignadoToOtro) {
                     try {
-                        int eliminadas = asignacionDAO.eliminarPorEquipo(e.getIdEquipo());
+                        List<modelo.Asignacion> activas = asignacionDAO.listarPorEquipo(e.getIdEquipo(), false, 1000, 0);
+                        int cerradas = 0;
+                        for (modelo.Asignacion a : activas) {
+                            if (asignacionDAO.marcarDevuelto(a.getIdAsignacion(), LocalDateTime.now())) cerradas++;
+                        }
                         req.getSession().setAttribute("flashOk",
-                                "Equipo actualizado." + (eliminadas > 0 ? (" Se eliminó la asignación.") : ""));
+                                "Equipo actualizado." + (cerradas > 0 ? (" Se marcaron " + cerradas + " asignaciones como devueltas.") : ""));
                     } catch (Exception cleanEx) {
                         req.getSession().setAttribute("flashError",
-                                "Equipo actualizado, pero ocurrió un error al eliminar asignaciones.");
+                                "Equipo actualizado, pero ocurrió un error al cerrar asignaciones activas.");
                     }
                 } else {
                     req.getSession().setAttribute(ok ? "flashOk" : "flashError",
                             ok ? "Equipo actualizado." : "No se actualizó el equipo.");
                 }
+
+
             } catch (NumberFormatException ex) {
                 req.getSession().setAttribute("flashError", "Invalid number format in form data.");
             } catch (IllegalArgumentException iae) {
