@@ -10,14 +10,21 @@ import datos.AsignacionDAO;
 import datos.EquipoSimDAO;
 import datos.EquipoConsumibleDAO;
 import datos.ColorDAO;
+import datos.UsuarioDAO;
+
 
 import modelo.Equipo;
 import modelo.EquipoDetalle;
+import modelo.Usuario;
+
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
+import java.util.HashMap;
+import java.util.Map;
+
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -30,7 +37,7 @@ import java.util.List;
 public class EquiposServlet extends HttpServlet {
 
     private static final int UI_LIMIT = 1000; // para cargar catálogos en selects
-    private static final int PAGE_SIZE = 50;  // para la tabla
+    private static final int PAGE_SIZE = 12;  // para la tabla
     private static final int STATUS_ASIGNADO = 2; // ID para estatus "Asignado"
 
     private EquipoDAO equipoDAO;
@@ -43,6 +50,8 @@ public class EquiposServlet extends HttpServlet {
     private EquipoSimDAO equipoSimDAO;
     private EquipoConsumibleDAO equipoConsumibleDAO;
     private ColorDAO colorDAO;
+    private UsuarioDAO usuarioDAO;
+
 
     @Override
     public void init() {
@@ -56,6 +65,7 @@ public class EquiposServlet extends HttpServlet {
         this.equipoSimDAO  = new EquipoSimDAO();
         this.equipoConsumibleDAO = new EquipoConsumibleDAO();
         this.colorDAO = new ColorDAO();
+        this.usuarioDAO = new UsuarioDAO();
     }
 
     @Override
@@ -85,7 +95,35 @@ public class EquiposServlet extends HttpServlet {
                     resp.getWriter().write("{\"error\":\"Equipment not found\"}");
                     return;
                 }
-                resp.getWriter().write(new Gson().toJson(e));
+                // Construir respuesta con datos base + subtipos (si existen)
+                Map<String, Object> out = new HashMap<>();
+                out.put("idEquipo", e.getIdEquipo());
+                out.put("idTipo", e.getIdTipo());
+                out.put("idModelo", e.getIdModelo());
+                out.put("numeroSerie", e.getNumeroSerie());
+                out.put("idMarca", e.getIdMarca());
+                out.put("idUbicacion", e.getIdUbicacion());
+                out.put("idEstatus", e.getIdEstatus());
+                out.put("ipFija", e.getIpFija());
+                out.put("puertoEthernet", e.getPuertoEthernet());
+                out.put("notas", e.getNotas());
+                // Adjuntar datos SIM si existen
+                try {
+                    modelo.EquipoSim sim = equipoSimDAO.obtenerPorIdEquipo(id);
+                    if (sim != null) {
+                        out.put("simNumeroAsignado", sim.getNumeroAsignado());
+                        out.put("simImei", sim.getImei());
+                    }
+                } catch (Exception ignore) {}
+                // Adjuntar datos Consumible si existen
+                try {
+                    modelo.EquipoConsumible cons = equipoConsumibleDAO.obtenerPorIdEquipo(id);
+                    if (cons != null) {
+                        out.put("idColorConsumible", cons.getIdColor());
+                        out.put("idColor", cons.getIdColor()); // compatibilidad con el JS del modal
+                    }
+                } catch (Exception ignore) {}
+                resp.getWriter().write(new Gson().toJson(out));
             } catch (NumberFormatException nfe) {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 resp.getWriter().write("{\"error\":\"Invalid id format\"}");
@@ -125,6 +163,41 @@ public class EquiposServlet extends HttpServlet {
             return;
         }
 
+        // Obtener datos de un usuario por ID (para ver detalles desde las asignaciones)
+        if ("usuario".equals(action)) {
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
+
+            String idUsuarioParam = req.getParameter("idUsuario");
+            if (idUsuarioParam == null || idUsuarioParam.trim().isEmpty()) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.getWriter().write("{\"error\":\"Missing idUsuario parameter\"}");
+                return;
+            }
+            try {
+                int idUsuario = Integer.parseInt(idUsuarioParam.trim());
+                Usuario u = usuarioDAO.obtenerPorId(idUsuario);
+                if (u == null) {
+                    resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    resp.getWriter().write("{\"error\":\"User not found\"}");
+                    return;
+                }
+                Gson gson = new GsonBuilder()
+                        .registerTypeAdapter(LocalDateTime.class,
+                                (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) -> new JsonPrimitive(src.toString()))
+                        .create();
+                resp.getWriter().write(gson.toJson(u));
+            } catch (NumberFormatException nfe) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.getWriter().write("{\"error\":\"Invalid idUsuario format\"}");
+            } catch (Exception ex) {
+                resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                resp.getWriter().write("{\"error\":\"Internal server error\"}");
+            }
+            return;
+        }
+
+
         // ===== Listado con filtros =====
         Integer idTipo      = parseIntOrNull(req.getParameter("idTipo"));
         Integer idMarca     = parseIntOrNull(req.getParameter("idMarca"));
@@ -133,9 +206,14 @@ public class EquiposServlet extends HttpServlet {
         Integer idUbicacion = parseIntOrNull(req.getParameter("idUbicacion"));
         String q            = trimToNull(req.getParameter("q"));
 
-        int page   = Math.max(1, parseIntOrDefault(req.getParameter("page"), 1));
-        int limit  = PAGE_SIZE;
+        int pageReq = Math.max(1, parseIntOrDefault(req.getParameter("page"), 1));
+        int limit   = PAGE_SIZE;
+        // Total de registros con filtros
+        int total = equipoDAO.contarConFiltros(idTipo, idMarca, idModelo, idEstatus, idUbicacion, q);
+        int totalPages = Math.max(1, (int) Math.ceil(total / (double) limit));
+        int page = Math.min(pageReq, totalPages);
         int offset = (page - 1) * limit;
+
 
         List<EquipoDetalle> equipos = equipoDAO.listarConDetalle(
                 idTipo, idMarca, idModelo, idEstatus, idUbicacion, q, limit, offset);
@@ -151,6 +229,9 @@ public class EquiposServlet extends HttpServlet {
         // ===== Atributos de vista =====
         req.setAttribute("equipos", equipos);
         req.setAttribute("page", page);
+        req.setAttribute("limit", limit);
+        req.setAttribute("total", total);
+        req.setAttribute("totalPages", totalPages);
         req.setAttribute("q", q);
         req.setAttribute("idTipo", idTipo);
         req.setAttribute("idMarca", idMarca);
@@ -196,7 +277,14 @@ public class EquiposServlet extends HttpServlet {
                 Equipo e = new Equipo();
                 e.setIdTipo(Integer.parseInt(req.getParameter("idTipo").trim()));
                 e.setIdModelo(parseIntOrNull(req.getParameter("idModelo")));
-                e.setNumeroSerie(req.getParameter("numeroSerie"));
+                String tipoNombre = req.getParameter("tipoNombre");
+                String tn = tipoNombre != null ? tipoNombre.trim().toUpperCase() : "";
+                String numSerie = emptyToNull(req.getParameter("numeroSerie"));
+                boolean tipoPermiteSinSerie = tn.contains("SIM") || tn.contains("CONSUM");
+                if (!tipoPermiteSinSerie && (numSerie == null || numSerie.isEmpty())) {
+                    throw new IllegalArgumentException("El número de serie es obligatorio para este tipo de equipo.");
+                }
+                e.setNumeroSerie(tipoPermiteSinSerie ? numSerie /* puede ser null */ : numSerie);
                 e.setIdMarca(parseIntOrNull(req.getParameter("idMarca")));
                 e.setIdUbicacion(parseIntOrNull(req.getParameter("idUbicacion")));
                 e.setIdEstatus(Integer.parseInt(req.getParameter("idEstatus").trim()));
@@ -206,9 +294,6 @@ public class EquiposServlet extends HttpServlet {
 
                 int newId = equipoDAO.crear(e);
                 e.setIdEquipo(newId);
-
-                String tipoNombre = req.getParameter("tipoNombre");
-                String tn = tipoNombre != null ? tipoNombre.trim().toUpperCase() : "";
 
                 // SIM
                 if (tn.contains("SIM")) {
@@ -258,7 +343,14 @@ public class EquiposServlet extends HttpServlet {
                 e.setIdEquipo(idEquipo);
                 e.setIdTipo(Integer.parseInt(req.getParameter("idTipo").trim()));
                 e.setIdModelo(parseIntOrNull(req.getParameter("idModelo")));
-                e.setNumeroSerie(req.getParameter("numeroSerie")); // requerido por tu DAO
+                String tipoNombre = req.getParameter("tipoNombre");
+                String tn = tipoNombre != null ? tipoNombre.trim().toUpperCase() : "";
+                boolean tipoPermiteSinSerie = tn.contains("SIM") || tn.contains("CONSUM");
+                String numSerie = emptyToNull(req.getParameter("numeroSerie"));
+                if (!tipoPermiteSinSerie && (numSerie == null || numSerie.isEmpty())) {
+                    throw new IllegalArgumentException("El número de serie es obligatorio para este tipo de equipo.");
+                }
+                e.setNumeroSerie(tipoPermiteSinSerie ? numSerie /* puede ser null */ : numSerie);
                 e.setIdMarca(parseIntOrNull(req.getParameter("idMarca")));
                 e.setIdUbicacion(parseIntOrNull(req.getParameter("idUbicacion")));
                 int nuevoEstatus = Integer.parseInt(req.getParameter("idEstatus").trim());

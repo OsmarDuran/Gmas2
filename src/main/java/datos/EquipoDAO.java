@@ -229,6 +229,38 @@ public class EquipoDAO {
         }
     }
 
+    public int contarConFiltros(Integer idTipo, Integer idMarca, Integer idModelo, Integer idEstatus, Integer idUbicacion, String textoLibre) {
+        StringBuilder sb = new StringBuilder(
+                "SELECT COUNT(*) " +
+                        "FROM equipo e " +
+                        "WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+        if (idTipo != null)      { sb.append("AND e.id_tipo = ? ");      params.add(idTipo); }
+        if (idMarca != null)     { sb.append("AND e.id_marca = ? ");     params.add(idMarca); }
+        if (idModelo != null)    { sb.append("AND e.id_modelo = ? ");    params.add(idModelo); }
+        if (idEstatus != null)   { sb.append("AND e.id_estatus = ? ");   params.add(idEstatus); }
+        if (idUbicacion != null) { sb.append("AND e.id_ubicacion = ? "); params.add(idUbicacion); }
+        if (textoLibre != null && !textoLibre.isEmpty()) {
+            sb.append("AND (e.numero_serie LIKE ? OR e.notas LIKE ?) ");
+            String like = "%" + textoLibre + "%";
+            params.add(like); params.add(like);
+        }
+        try (Connection cn = Conexion.getConexion(); PreparedStatement ps = cn.prepareStatement(sb.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) ps.setInt(i + 1, (Integer) p);
+                else ps.setObject(i + 1, p);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+                return 0;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al contar equipos con filtros", ex);
+        }
+    }
+
+
     // =========================
     // Helpers de mapeo
     // =========================

@@ -6,61 +6,7 @@
 <head>
     <meta charset="UTF-8"/>
     <title>Equipos</title>
-    <style>
-        .btn{padding:.45rem .8rem;border:1px solid #cbd5e1;border-radius:.5rem;background:#fff;cursor:pointer}
-        .btn-primary{background:#2563eb;color:#fff;border-color:#1d4ed8}
-        .btn-danger{background:#ef4444;color:#fff;border-color:#dc2626}
-        .btn-secondary{background:#e2e8f0;color:#0f172a;border-color:#cbd5e1}
 
-        /* Contenedor principal más contenido */
-        main.container{max-width:1150px;margin:24px auto;padding:0 12px}
-
-        /* Card general para agrupar título, filtros y tabla */
-        .card{background:#fff;border:1px solid #e5e7eb;border-radius:.75rem;padding:1rem;box-shadow:0 2px 8px rgba(2,8,23,.04)}
-        .card-compact h1{margin:0 0 .25rem;color:#0f172a;font-size:1.35rem}
-
-        /* Alertas compactas */
-        .alert{margin:.5rem 0;padding:.45rem .65rem;border-radius:.5rem;font-size:.9rem}
-        .alert-ok{color:#065f46;background:#d1fae5}
-        .alert-err{color:#991b1b;background:#fee2e2}
-
-        /* Filtros compactos */
-        .toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:.5rem 0}
-        .toolbar .filters-row{display:flex;gap:.5rem;flex-wrap:wrap}
-        .toolbar input[type="search"], .toolbar select{
-            height:34px;padding:0 .55rem;border:1px solid #cbd5e1;border-radius:.45rem;background:#fff;font-size:.9rem;outline:none
-        }
-
-        /* Tabla más legible y compacta */
-        table{width:100%;border-collapse:collapse}
-        th,td{padding:.5rem;border-bottom:1px solid #e5e7eb;text-align:left}
-        thead th{font-weight:600;color:#334155;background:#f1f5f9;position:sticky;top:0;z-index:1}
-        tbody tr:nth-child(odd){background:#fbfdff}
-        tbody tr:hover{background:#f8fafc}
-
-        /* Animación y estilo de modales */
-        dialog{border:none;border-radius:.75rem;max-width:820px;width:95%;transform-origin:center top}
-        dialog[open]{animation:modal-in .22s ease}
-        dialog.closing{animation:modal-out .18s ease forwards}
-        dialog::backdrop{background:rgba(0,0,0,0)}
-        dialog[open]::backdrop{animation:backdrop-in .22s ease forwards}
-        dialog.closing::backdrop{animation:backdrop-out .18s ease forwards}
-        @keyframes modal-in{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-        @keyframes modal-out{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-8px) scale(.98)}}
-        @keyframes backdrop-in{from{opacity:0}to{opacity:.3}}
-        @keyframes backdrop-out{from{opacity:.3}to{opacity:0}}
-
-
-        .modal-h{display:flex;align-items:center;justify-content:space-between;padding:1rem;border-bottom:1px solid #1d4ed8
-        }
-        .modal-b{padding:1rem;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.8rem}
-        .modal-f{display:flex;justify-content:flex-end;gap:.5rem;padding:1rem;border-top:1px solid #1d4ed8}
-        .field{display:flex;flex-direction:column;gap:.25rem}
-        /* Colores por estado (fila completa) */
-        tbody tr.status-disponible{ background:#ecfdf5; }   /* verde claro */
-        tbody tr.status-asignado{   background:#bbf7d0; }   /* verde más intenso */
-        tbody tr.status-reparacion{ background:#ffedd5; }   /* naranja claro */
-    </style>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
@@ -73,10 +19,15 @@
             <span></span>
             <span></span>
             <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
         </div>
     </div>
     <div class="menu">
         <a href="equipos.jsp" class="active"><span class="icon fa-solid fa-desktop"></span><span class="text">Equipos</span></a>
+        <a href="sims.jsp"><span class="icon fa-solid fa-sim-card"></span><span class="text">Sims</span> </a>
+        <a href="comsumibles.jsp"><span class="icon fa-solid fa-boxes-stacked"></span><span class="text">Consumibles</span> </a>
         <a href="asignaciones.jsp"><span class="icon fa-solid fa-arrow-right-arrow-left"></span><span class="text">Asignaciones</span></a>
         <a href="catalogos.jsp"><span class="icon fa-solid fa-folder-open"></span><span class="text">Catalogos</span></a>
         <a href="usuarios.jsp"><span class="icon fa-solid fa-users"></span><span class="text">Usuarios</span></a>
@@ -182,6 +133,76 @@
         </table>
     </div>
     </div>
+    <!-- Paginación -->
+    <c:if test="${totalPages gt 1}">
+        <div class="pagination" style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin:.75rem 0;">
+            <!-- Prev -->
+            <c:if test="${page gt 1}">
+                <c:url var="uPrev" value="/equipos"><c:param name="page" value="${page-1}"/><c:if test="${not empty q}"><c:param name="q" value="${q}"/></c:if><c:if test="${not empty idTipo}"><c:param name="idTipo" value="${idTipo}"/></c:if><c:if test="${not empty idMarca}"><c:param name="idMarca" value="${idMarca}"/></c:if><c:if test="${not empty idModelo}"><c:param name="idModelo" value="${idModelo}"/></c:if><c:if test="${not empty idUbicacion}"><c:param name="idUbicacion" value="${idUbicacion}"/></c:if><c:if test="${not empty idEstatus}"><c:param name="idEstatus" value="${idEstatus}"/></c:if></c:url>
+                <a class="btn" href="${pageContext.request.contextPath}${uPrev}">«</a>
+            </c:if>
+            <!-- Página 1 -->
+            <c:url var="u1" value="/equipos">
+                <c:param name="page" value="1"/>
+                <c:if test="${not empty q}"><c:param name="q" value="${q}"/></c:if>
+                <c:if test="${not empty idTipo}"><c:param name="idTipo" value="${idTipo}"/></c:if>
+                <c:if test="${not empty idMarca}"><c:param name="idMarca" value="${idMarca}"/></c:if>
+                <c:if test="${not empty idModelo}"><c:param name="idModelo" value="${idModelo}"/></c:if>
+                <c:if test="${not empty idUbicacion}"><c:param name="idUbicacion" value="${idUbicacion}"/></c:if>
+                <c:if test="${not empty idEstatus}"><c:param name="idEstatus" value="${idEstatus}"/></c:if>
+            </c:url>
+            <a class="btn ${page==1 ? 'btn-secondary' : ''}" href="${pageContext.request.contextPath}${u1}">1</a>
+            <!-- Ellipsis izquierda -->
+            <c:if test="${page gt 3}">
+                <span style="padding:0 .25rem;color:#64748b">…</span>
+               </c:if>
+            <!-- Ventana alrededor de la actual -->
+            <c:set var="startWin" value="${page-1 lt 2 ? 2 : page-1}"/>
+            <c:set var="endWin"   value="${page+1 gt totalPages-1 ? totalPages-1 : page+1}"/>
+            <c:forEach var="i" begin="${startWin}" end="${endWin}">
+                <c:url var="uI" value="/equipos"><c:param name="page" value="${i}"/>
+                    <c:if test="${not empty q}"><c:param name="q" value="${q}"/></c:if>
+                    <c:if test="${not empty idTipo}"><c:param name="idTipo" value="${idTipo}"/></c:if>
+                    <c:if test="${not empty idMarca}"><c:param name="idMarca" value="${idMarca}"/></c:if>
+                    <c:if test="${not empty idModelo}"><c:param name="idModelo" value="${idModelo}"/></c:if>
+                    <c:if test="${not empty idUbicacion}"><c:param name="idUbicacion" value="${idUbicacion}"/></c:if>
+                    <c:if test="${not empty idEstatus}"><c:param name="idEstatus" value="${idEstatus}"/></c:if>
+                 </c:url>
+                <a class="btn ${page==i ? 'btn-secondary' : ''}" href="${pageContext.request.contextPath}${uI}">${i}</a>
+            </c:forEach>
+            <!-- Ellipsis derecha -->
+                <c:if test="${page lt totalPages-2}"><span style="padding:0 .25rem;color:#64748b">…</span>
+                </c:if>
+
+                <!-- Última -->
+                <c:if test="${totalPages gt 1}">
+                  <c:url var="uLast" value="/equipos">
+                    <c:param name="page" value="${totalPages}"/>
+                    <c:if test="${not empty q}"><c:param name="q" value="${q}"/></c:if>
+                    <c:if test="${not empty idTipo}"><c:param name="idTipo" value="${idTipo}"/></c:if>
+                      <c:if test="${not empty idMarca}"><c:param name="idMarca" value="${idMarca}"/></c:if>
+                   <c:if test="${not empty idModelo}"><c:param name="idModelo" value="${idModelo}"/></c:if>
+                   <c:if test="${not empty idUbicacion}"><c:param name="idUbicacion" value="${idUbicacion}"/></c:if>
+                   <c:if test="${not empty idEstatus}"><c:param name="idEstatus" value="${idEstatus}"/></c:if>
+                  </c:url>
+                  <a class="btn ${page==totalPages ? 'btn-secondary' : ''}" href="${pageContext.request.contextPath}${uLast}">${totalPages}</a>
+                </c:if>
+
+        <!-- Next -->
+        <c:if test="${page lt totalPages}">
+        <c:url var="uNext" value="/equipos">
+        <c:param name="page" value="${page+1}"/>
+        <c:if test="${not empty q}"><c:param name="q" value="${q}"/></c:if>
+        <c:if test="${not empty idTipo}"><c:param name="idTipo" value="${idTipo}"/></c:if>
+        <c:if test="${not empty idMarca}"><c:param name="idMarca" value="${idMarca}"/></c:if>
+        <c:if test="${not empty idModelo}"><c:param name="idModelo" value="${idModelo}"/></c:if>
+        <c:if test="${not empty idUbicacion}"><c:param name="idUbicacion" value="${idUbicacion}"/></c:if>
+        <c:if test="${not empty idEstatus}"><c:param name="idEstatus" value="${idEstatus}"/></c:if>
+    </c:url>
+        <a class="btn" href="${pageContext.request.contextPath}${uNext}">»</a>
+    </c:if>
+    </div>
+    </c:if>
 </main>
 
 <!-- MODAL EDICIÓN -->
@@ -207,7 +228,7 @@
             </div>
             <div class="field">
                 <label>Número de serie</label>
-                <input type="text" name="numeroSerie" id="numeroSerie" required/>
+                <input type="text" name="numeroSerie" id="numeroSerie"/>
             </div>
             <div class="field">
                 <label>Marca</label>
@@ -306,10 +327,12 @@
                             <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Asignado en</th>
                             <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Devuelto en</th>
                             <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Estado</th>
+                            <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Acciones</th>
                         </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
+
                 </div>
             </div>
         </div>
@@ -362,18 +385,19 @@
       <label>Asignaciones</label>
       <div id="detailsAsignacionesPanel" style="border:1px solid #e5e7eb;border-radius:.5rem;padding:.5rem;max-height:240px;overflow:auto">
         <div id="detailsAsignacionesEmpty" style="color:#6b7280">No hay asignaciones.</div>
-        <table id="detailsAsignacionesTable" style="width:100%;border-collapse:collapse;display:none">
-          <thead>
-            <tr>
-              <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Usuario</th>
-              <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Asignado por</th>
-              <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Asignado en</th>
-              <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Devuelto en</th>
-              <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Estado</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+          <table id="detailsAsignacionesTable" style="width:100%;border-collapse:collapse;display:none">
+              <thead>
+              <tr>
+                  <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Usuario</th>
+                  <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Asignado por</th>
+                  <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Asignado en</th>
+                  <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Devuelto en</th>
+                  <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Estado</th>
+                  <th style="text-align:left;padding:.35rem;border-bottom:1px solid #e5e7eb">Acciones</th>
+              </tr>
+              </thead>
+              <tbody></tbody>
+          </table>
       </div>
     </div>
   </div>
@@ -381,6 +405,30 @@
     <button type="button" class="btn" id="btnCloseDetails2">Cerrar</button>
   </div>
 </dialog>
+
+<!-- MODAL USUARIO -->
+<dialog id="userModal">
+    <div class="modal-h">
+        <h3>Detalles del usuario</h3>
+        <button type="button" class="btn" id="btnCloseUser">✕</button>
+    </div>
+    <div class="modal-b" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="field"><label>Nombre</label><div id="u_nombre">—</div></div>
+        <div class="field"><label>Email</label><div id="u_email">—</div></div>
+        <div class="field"><label>Teléfono</label><div id="u_tel">—</div></div>
+        <div class="field"><label>Rol</label><div id="u_rol">—</div></div>
+        <div class="field"><label>Puesto</label><div id="u_puesto">—</div></div>
+        <div class="field"><label>Centro</label><div id="u_centro">—</div></div>
+        <div class="field"><label>Líder</label><div id="u_lider">—</div></div>
+        <div class="field"><label>Activo</label><div id="u_activo">—</div></div>
+        <div class="field"><label>Último login</label><div id="u_login">—</div></div>
+        <div class="field"><label>Creado en</label><div id="u_creado">—</div></div>
+    </div>
+    <div class="modal-f">
+        <button type="button" class="btn" id="btnCloseUser2">Cerrar</button>
+    </div>
+</dialog>
+
 
 <script>
   // Context path para peticiones
@@ -562,9 +610,14 @@
     const selModeloModal = document.getElementById('idModelo');
     const selEstatusModal = document.getElementById('idEstatus');
     const selTipoModal = document.getElementById('idTipo');
-    const tipoNombreInp = document.getElementById('tipoNombre');
-    const simFields = document.getElementById('simFields');
-    const consumibleFields = document.getElementById('consumibleFields');
+      const tipoNombreInp = document.getElementById('tipoNombre');
+      const numeroSerieInp = document.getElementById('numeroSerie');
+      const simFields = document.getElementById('simFields');
+      // Campos específicos
+      const simNumeroInp = document.getElementById('simNumeroAsignado');
+      const simImeiInp   = document.getElementById('simImei');
+      const colorConsumibleSel = document.getElementById('idColorConsumible');
+      const consumibleFields = document.getElementById('consumibleFields');
     const asignacionesPanel = document.getElementById('asignacionesPanel');
 
     // Control de estatus y asignaciones
@@ -655,23 +708,33 @@
         return String(val);
       };
 
-      const makeTd = (text) => {
-        const td = document.createElement('td');
-        td.style.padding = '.35rem';
-        td.style.borderBottom = '1px solid #f1f5f9';
-        td.textContent = (text !== null && text !== undefined) ? String(text) : '';
-        return td;
-      };
+        const makeTd = (text) => {
+            const td = document.createElement('td');
+            td.style.padding = '.35rem';
+            td.style.borderBottom = '1px solid #f1f5f9';
+            td.textContent = (text !== null && text !== undefined) ? String(text) : '';
+            return td;
+        };
 
-      for (const a of list) {
-        const tr = document.createElement('tr');
-        tr.appendChild(makeTd(a.usuarioNombre || ''));
-        tr.appendChild(makeTd(a.asignadorNombre || ''));
-        tr.appendChild(makeTd(fmtDate(a.asignadoEn)));
-        tr.appendChild(makeTd(fmtDate(a.devueltoEn)));
-        tr.appendChild(makeTd(a && a.devueltoEn ? 'Devuelto' : 'Activa'));
-        asignacionesTbody.appendChild(tr);
-      }
+        for (const a of list) {
+            const tr = document.createElement('tr');
+            tr.appendChild(makeTd(a.usuarioNombre || ''));
+            tr.appendChild(makeTd(a.asignadorNombre || ''));
+            tr.appendChild(makeTd(fmtDate(a.asignadoEn)));
+            tr.appendChild(makeTd(fmtDate(a.devueltoEn)));
+            tr.appendChild(makeTd(a && a.devueltoEn ? 'Devuelto' : 'Activa'));
+            const tdAcc = document.createElement('td');
+            tdAcc.style.padding = '.35rem';
+            tdAcc.style.borderBottom = '1px solid #f1f5f9';
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn btn-secondary btn-user-details';
+            b.textContent = 'Ver usuario';
+            b.dataset.userId = String(a.idUsuario || '');
+            tdAcc.appendChild(b);
+            tr.appendChild(tdAcc);
+            asignacionesTbody.appendChild(tr);
+        }
     }
 
     if (selMarcaModal) {
@@ -754,7 +817,27 @@
           if (consumibleFields) consumibleFields.style.display =
               (nombreTipo.includes('CONSUMIBLE') || nombreTipo.includes('CONSUM')) ? '' : 'none';
 
-          // Estatus original y seleccionado
+            // Precargar campos específicos según el subtipo
+            if (nombreTipo.includes('SIM')) {
+                if (simNumeroInp) simNumeroInp.value = e.simNumeroAsignado ?? '';
+                if (simImeiInp)   simImeiInp.value   = e.simImei ?? '';
+            } else {
+                if (simNumeroInp) simNumeroInp.value = '';
+                if (simImeiInp)   simImeiInp.value   = '';
+            }
+            if (nombreTipo.includes('CONSUMIBLE') || nombreTipo.includes('CONSUM')) {
+                const colorId = e.idColorConsumible ?? e.idColor ?? '';
+                if (colorConsumibleSel) colorConsumibleSel.value = String(colorId || '');
+            } else {
+                if (colorConsumibleSel) colorConsumibleSel.value = '';
+            }
+            // Requerimiento dinámico de número de serie
+            if (numeroSerieInp) {
+                const esLibre = nombreTipo.includes('SIM') || nombreTipo.includes('CONSUM');
+                numeroSerieInp.required = !esLibre;
+            }
+
+            // Estatus original y seleccionado
           estatusOriginal = e.idEstatus;
           estatusSeleccionado = e.idEstatus;
           // Asegura que la opción "Asignado" exista si el equipo está en ese estado y luego selecciona el valor
@@ -888,7 +971,15 @@
                 tr.appendChild(makeTd(fmtDate(a.asignadoEn)));
                 tr.appendChild(makeTd(a.devueltoEn ? fmtDate(a.devueltoEn) : ''));
                 tr.appendChild(makeTd(a && a.devueltoEn ? 'Devuelto' : 'Activa'));
-                asgTbody.appendChild(tr);
+                const tdAcc = makeTd('');
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'btn btn-secondary btn-user-details';
+                b.textContent = 'Ver usuario';
+                b.dataset.userId = String(a.idUsuario || '');
+                tdAcc.textContent = '';
+                tdAcc.appendChild(b);
+                asgTbody.appendChild((() => { const row = tr; row.appendChild(tdAcc); return row; })());
             });
         }
 
@@ -988,6 +1079,7 @@
     const selModeloModal = document.getElementById('idModelo');
     const selEstatusModal= document.getElementById('idEstatus');
     const tipoNombreInp  = document.getElementById('tipoNombre');
+    const numeroSerieInp = document.getElementById('numeroSerie');
 
     const simFields = document.getElementById('simFields');
     const simNumero = document.getElementById('simNumeroAsignado');
@@ -1014,6 +1106,8 @@
 
       if (!isSIM) { if (simNumero) simNumero.value = ''; if (simImei) simImei.value = ''; }
       if (!isCONS) { if (idColorConsumible) idColorConsumible.value = ''; }
+      if (numeroSerieInp) numeroSerieInp.required = !(isSIM || isCONS);
+
     }
 
     function buildModeloOptionsModal(idMarca, selectedIdModelo) {
@@ -1059,8 +1153,10 @@
       document.getElementById('ipFija').value = '';
       document.getElementById('puertoEthernet').value = '';
       document.getElementById('notas').value = '';
+      if (numeroSerieInp) numeroSerieInp.required = true;
 
-      // Ocultar panel de asignaciones en nuevo
+
+        // Ocultar panel de asignaciones en nuevo
       if (asignacionesPanel) asignacionesPanel.style.display = 'none';
       if (asignacionesTbody) asignacionesTbody.innerHTML = '';
       if (asignacionesEmpty) asignacionesEmpty.style.display = 'block';
@@ -1244,5 +1340,69 @@
     });
   })();
 </script>
+
+<script>
+    // Modal Usuario: abrir desde botones .btn-user-details
+    (() => {
+        const uDlg = document.getElementById('userModal');
+        const u = (id) => document.getElementById(id);
+        const fmt = (d) => {
+            if (!d) return '—';
+            try {
+                const x = new Date(d);
+                if (!isNaN(x)) return x.toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'});
+            } catch(_) {}
+            return String(d);
+        };
+        function fillUser(data){
+            u('u_nombre').textContent = [data.nombre, data.apellidoPaterno, data.apellidoMaterno].filter(Boolean).join(' ').trim() || '—';
+            u('u_email').textContent  = data.email || '—';
+            u('u_tel').textContent    = data.telefono || '—';
+            u('u_rol').textContent    = data.nombreRol || '—';
+            u('u_puesto').textContent = data.nombrePuesto || '—';
+            u('u_centro').textContent = data.nombreCentro || '—';
+            u('u_lider').textContent  = data.nombreLider || '—';
+            u('u_activo').textContent = (data.activo === true ? 'Sí' : (data.activo === false ? 'No' : '—'));
+            u('u_login').textContent  = fmt(data.ultimoLogin);
+            u('u_creado').textContent = fmt(data.creadoEn);
+        }
+        async function openUserDetails(idUsuario){
+            if (!idUsuario) return;
+            try{
+                const r = await fetch(ctx + '/equipos?action=usuario&idUsuario=' + encodeURIComponent(idUsuario), {
+                    headers: { 'Accept':'application/json' }
+                });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const data = await r.json();
+                fillUser(data);
+                if (typeof uDlg?.showModal === 'function') uDlg.showModal();
+            } catch(err){
+                alert('No fue posible cargar el usuario.');
+            }
+        }
+        // Delegación de eventos para ambos modales (edición/detalles)
+        document.addEventListener('click', (ev) => {
+            const b = ev.target.closest('.btn-user-details');
+            if (!b) return;
+            ev.preventDefault();
+            const idUsuario = b.getAttribute('data-user-id');
+            openUserDetails(idUsuario);
+        });
+
+        // Cierre animado (igual que otros)
+        const btnCloseUser  = document.getElementById('btnCloseUser');
+        const btnCloseUser2 = document.getElementById('btnCloseUser2');
+        function animateClose(d){
+            if(!d) return;
+            d.classList.add('closing');
+            d.addEventListener('animationend', ()=>{ d.classList.remove('closing'); d.close(); }, {once:true});
+        }
+        if (btnCloseUser)  btnCloseUser.onclick  = () => animateClose(uDlg);
+        if (btnCloseUser2) btnCloseUser2.onclick = () => animateClose(uDlg);
+        if (uDlg) uDlg.addEventListener('cancel', (e)=>{ e.preventDefault(); animateClose(uDlg); });
+    })();
+</script>
+
+
 </body>
 </html>
