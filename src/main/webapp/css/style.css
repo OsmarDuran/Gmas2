@@ -127,10 +127,27 @@ main.container{max-width:1150px;margin:24px auto;padding:0 12px}
 .alert-err{color:#991b1b;background:#fee2e2}
 
 /* Filtros */
-.toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:.5rem 0}
-.toolbar .filters-row{display:flex;gap:.5rem;flex-wrap:wrap}
+.toolbar{
+    display:flex;
+    gap:.5rem;
+    flex-wrap:nowrap;             /* Mantiene botón y filtros en la misma línea */
+    align-items:center;
+    margin:.5rem 0;
+}
+.toolbar .filters-row{
+    display:flex;
+    gap:.5rem;
+    flex-wrap:wrap;               /* Los filtros sí pueden saltar de línea internamente */
+    flex:1 1 auto;                /* Ocupan el espacio disponible */
+}
+.toolbar .add-btn{
+    margin-left:auto;             /* Empuja el botón a la derecha */
+    white-space:nowrap;           /* Evita que el texto del botón se parta */
+}
+
+
 .toolbar input[type="search"], .toolbar select{
-    height:34px;padding:0 .55rem;border:1px solid #cbd5e1;border-radius:.45rem;background:#fff;font-size:.9rem;outline:none
+    height:34px;padding:0 .55rem;border:1px solid #cbd5e1;border-radius:.45rem;background:#fff;font-size:.85rem;outline:none
 }
 
 /* Tabla */
@@ -168,3 +185,29 @@ dialog.closing::backdrop{animation:backdrop-out .18s ease forwards}
 tbody tr.status-disponible{ background:#ecfdf5; }
 tbody tr.status-asignado{   background:#bbf7d0; }
 tbody tr.status-reparacion{ background:#ffedd5; }
+tbody tr.status-desuso{     background: #a8a8a8; }
+
+/* Overlay de carga */
+#loadingOverlay{
+    position:fixed; inset:0; background:rgba(15,23,42,.28);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .15s ease;
+    z-index:9999;
+}
+.loading #loadingOverlay{ opacity:1; pointer-events:auto; }
+
+/* Spinner */
+.loader{
+    width:42px; height:42px; border-radius:50%;
+    border:3px solid #fff; border-top-color:#2563eb;
+    animation:spin .8s linear infinite;
+    box-shadow:0 0 0 2px rgba(255,255,255,.15) inset;
+}
+@keyframes spin{ to { transform: rotate(360deg); } }
+
+/* Aparición suave de la tabla tras cargar */
+.table-appear{ animation:tableFade .25s ease-out; }
+@keyframes tableFade{
+    from{ opacity:0; transform:translateY(6px); }
+    to  { opacity:1; transform:translateY(0); }
+}

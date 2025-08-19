@@ -124,10 +124,27 @@ public class EquipoDAO {
         if (idEstatus != null)   { sb.append("AND e.id_estatus = ? ");   params.add(idEstatus); }
         if (idUbicacion != null) { sb.append("AND e.id_ubicacion = ? "); params.add(idUbicacion); }
         if (textoLibre != null && !textoLibre.isEmpty()) {
-            sb.append("AND (e.numero_serie LIKE ? OR e.notas LIKE ?) ");
+            sb.append("AND (")
+                    .append("e.numero_serie LIKE ? OR e.notas LIKE ? OR ")
+                    .append("te.nombre LIKE ? OR mo.nombre LIKE ? OR ma.nombre LIKE ? OR ")
+                    .append("u.nombre LIKE ? OR es.nombre LIKE ? OR ")
+                    .append("e.ip_fija LIKE ? OR e.puerto_ethernet LIKE ?")
+                    .append(") ");
             String like = "%" + textoLibre + "%";
-            params.add(like); params.add(like);
+            // e.*
+            params.add(like); // numero_serie
+            params.add(like); // notas
+            // catálogos
+            params.add(like); // tipo_equipo.nombre
+            params.add(like); // modelo.nombre
+            params.add(like); // marca.nombre
+            params.add(like); // ubicacion.nombre
+            params.add(like); // estatus.nombre
+            // otros campos
+            params.add(like); // ip_fija
+            params.add(like); // puerto_ethernet
         }
+
         sb.append("ORDER BY e.id_equipo DESC LIMIT ? OFFSET ?");
         params.add(limit); params.add(offset);
 
@@ -229,22 +246,34 @@ public class EquipoDAO {
         }
     }
 
-    public int contarConFiltros(Integer idTipo, Integer idMarca, Integer idModelo, Integer idEstatus, Integer idUbicacion, String textoLibre) {
-        StringBuilder sb = new StringBuilder(
-                "SELECT COUNT(*) " +
-                        "FROM equipo e " +
-                        "WHERE 1=1 ");
+    public int contarConFiltros(Integer idTipo, Integer idMarca, Integer idModelo,
+                                Integer idEstatus, Integer idUbicacion, String textoLibre) {
+        // Contar con los mismos JOINs que el listado, para poder filtrar por columnas de catálogos
+        StringBuilder sb = new StringBuilder("SELECT COUNT(*) " + BASE_JOIN + "WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
         if (idTipo != null)      { sb.append("AND e.id_tipo = ? ");      params.add(idTipo); }
         if (idMarca != null)     { sb.append("AND e.id_marca = ? ");     params.add(idMarca); }
         if (idModelo != null)    { sb.append("AND e.id_modelo = ? ");    params.add(idModelo); }
         if (idEstatus != null)   { sb.append("AND e.id_estatus = ? ");   params.add(idEstatus); }
-        if (idUbicacion != null) { sb.append("AND e.id_ubicacion = ? "); params.add(idUbicacion); }
-        if (textoLibre != null && !textoLibre.isEmpty()) {
-            sb.append("AND (e.numero_serie LIKE ? OR e.notas LIKE ?) ");
+        if (idUbicacion != null) { sb.append("AND e.id_ubicacion = ? "); params.add(idUbicacion); }if (textoLibre != null && !textoLibre.isEmpty()) {
+            sb.append("AND (")
+                    .append("e.numero_serie LIKE ? OR e.notas LIKE ? OR ")
+                    .append("te.nombre LIKE ? OR mo.nombre LIKE ? OR ma.nombre LIKE ? OR ")
+                    .append("u.nombre LIKE ? OR es.nombre LIKE ? OR ")
+                    .append("e.ip_fija LIKE ? OR e.puerto_ethernet LIKE ?")
+                    .append(") ");
             String like = "%" + textoLibre + "%";
-            params.add(like); params.add(like);
+            params.add(like); // numero_serie
+            params.add(like); // notas
+            params.add(like); // tipo
+            params.add(like); // modelo
+            params.add(like); // marca
+            params.add(like); // ubicacion
+            params.add(like); // estatus
+            params.add(like); // ip
+            params.add(like); // puerto
         }
+
         try (Connection cn = Conexion.getConexion(); PreparedStatement ps = cn.prepareStatement(sb.toString())) {
             for (int i = 0; i < params.size(); i++) {
                 Object p = params.get(i);

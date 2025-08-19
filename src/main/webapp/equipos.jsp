@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha512-DxV+EoADOkOygM4IR9yXP8Sb2qwgidEmeqAEmDKIOfPRQZOWbXCzLC6vjbZyy0vPisbH2SyW27+ddLVCN+OMzQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
+<div id="loadingOverlay"><div class="loader" aria-label="Cargando"></div></div>
 
 <div class="box-menu">
     <div class="wrapper">
@@ -87,7 +88,8 @@
                 </c:forEach>
             </select>
         </div>
-        <a class="btn btn-primary" href="${pageContext.request.contextPath}/equipos-nuevo">Agregar Equipo</a>
+        <input type="hidden" name="page" id="pageInput" value="1"/>
+        <a class="btn btn-primary add-btn" href="${pageContext.request.contextPath}/equipos-nuevo">Agregar Equipo</a>
     </form>
 
     <!-- Tabla -->
@@ -468,135 +470,114 @@
     </c:forEach>
   ];
 
-  // =======================
-  // Filtros (barra superior) - Filtrado en cliente (sin recargar)
-  // =======================
+
+
+    // Filtros (barra superior) - Enviar al servidor y recalcular paginación
+        // =======================
   (() => {
-    const form = document.querySelector('form.toolbar');
-    const tableBody = document.querySelector('.table-wrapper table tbody');
-    const selTipoFiltro      = form?.querySelector('select[name="idTipo"]');
-    const selMarcaFiltro     = form?.querySelector('select[name="idMarca"]');
-    const selModeloFiltro    = form?.querySelector('select[name="idModelo"]');
-    const selUbicacionFiltro = form?.querySelector('select[name="idUbicacion"]');
-    const selEstatusFiltro   = form?.querySelector('select[name="idEstatus"]');
-    const inputQ             = form?.querySelector('input[name="q"]');
+      const form = document.querySelector('form.toolbar');
+      if (!form) return;
+      const inputQ   = form.querySelector('input[name="q"]');
+      const selTipo  = form.querySelector('select[name="idTipo"]');
+      const selMarca = form.querySelector('select[name="idMarca"]');
+      const selModelo= form.querySelector('select[name="idModelo"]');
+      const selUbic  = form.querySelector('select[name="idUbicacion"]');
+      const selEst   = form.querySelector('select[name="idEstatus"]');
+      const pageInp  = form.querySelector('#pageInput');
 
-    const initialIdMarca  = '${idMarca}';
-    const initialIdModelo = '${idModelo}';
+      function showLoading(){ document.body.classList.add('loading'); }
+      function hideLoading(){ document.body.classList.remove('loading'); }
 
-    const norm = (s) => (s == null ? '' : String(s).trim().toLowerCase());
-    const valOrEmpty = (s) => {
-      const v = norm(s);
-      return v === '—' ? '' : v;
-    };
-    const selectedText = (sel) => sel && sel.options && sel.selectedIndex >= 0
-      ? norm(sel.options[sel.selectedIndex].textContent) : '';
+      let lastSubmittedQ = (inputQ ? (inputQ.value || '').trim() : '');
 
-    function buildModeloOptionsFilter(idMarca, selectedIdModelo) {
-      if (!selModeloFiltro) return;
-      selModeloFiltro.innerHTML = '';
-      const def = document.createElement('option');
-      def.value = '';
-      def.textContent = 'Modelo';
-      selModeloFiltro.appendChild(def);
 
-      if (!idMarca) {
-        selModeloFiltro.value = '';
-        return;
+      // Cuando cambie cualquier filtro, reinicia a página 1 y envía
+      function submitFilters() {
+          if (pageInp) pageInp.value = '1';
+          if (inputQ) lastSubmittedQ = (inputQ.value || '').trim();
+          showLoading();
+          // Pequeño delay para que el overlay pinte antes de la navegación
+          setTimeout(() => form.submit(), 10);
       }
 
-      const modelos = (window.ALL_MODELOS || []).filter(m => String(m.idMarca) === String(idMarca));
-      for (const m of modelos) {
-        const opt = document.createElement('option');
-        opt.value = String(m.idModelo);
-        opt.textContent = m.nombre;
-        selModeloFiltro.appendChild(opt);
+      // Dependencia Marca -> Modelo (reconstruye opciones y envía)
+      if (selMarca && selModelo && window.ALL_MODELOS) {
+          selMarca.addEventListener('change', () => {
+              const idMarca = selMarca.value || '';
+              selModelo.innerHTML = '';
+              const def = document.createElement('option');
+              def.value = ''; def.textContent = 'Modelo';
+              selModelo.appendChild(def);
+              if (idMarca) {
+                  (window.ALL_MODELOS || [])
+                      .filter(m => String(m.idMarca) === String(idMarca))
+                      .forEach(m => {
+                          const opt = document.createElement('option');
+                          opt.value = String(m.idModelo);
+                          opt.textContent = m.nombre;
+                          selModelo.appendChild(opt);
+                      });
+              }
+              submitFilters();
+          });
       }
 
-      if (selectedIdModelo && modelos.some(m => String(m.idModelo) === String(selectedIdModelo))) {
-        selModeloFiltro.value = String(selectedIdModelo);
-      } else {
-        selModeloFiltro.value = '';
-      }
-    }
-
-    function filterRows() {
-      if (!tableBody) return;
-      const q = norm(inputQ ? inputQ.value : '');
-
-      const tTipo = selectedText(selTipoFiltro);
-      const tMarca = selectedText(selMarcaFiltro);
-      const tModelo = selectedText(selModeloFiltro);
-      const tUbic = selectedText(selUbicacionFiltro);
-      const tEstatus = selectedText(selEstatusFiltro);
-
-      const rows = Array.from(tableBody.querySelectorAll('tr'));
-      for (const tr of rows) {
-        const cTipo   = valOrEmpty(tr.cells[0]?.textContent);
-        const cSerie  = valOrEmpty(tr.cells[1]?.textContent);
-        const cMarca  = valOrEmpty(tr.cells[2]?.textContent);
-        const cModelo = valOrEmpty(tr.cells[3]?.textContent);
-        const cUbic   = valOrEmpty(tr.cells[4]?.textContent);
-        const cEst    = valOrEmpty(tr.cells[5]?.textContent);
-
-        const matchQ = !q || [cTipo, cModelo, cSerie, cMarca, cUbic, cEst].some(t => t.includes(q));
-        const matchTipo = !selTipoFiltro?.value || cTipo === tTipo;
-        const matchMarca = !selMarcaFiltro?.value || cMarca === tMarca;
-        const matchModelo = !selModeloFiltro?.value || cModelo === tModelo;
-        const matchUbic = !selUbicacionFiltro?.value || cUbic === tUbic;
-        const matchEst = !selEstatusFiltro?.value || cEst === tEstatus;
-
-        tr.style.display = (matchQ && matchTipo && matchMarca && matchModelo && matchUbic && matchEst) ? '' : 'none';
-      }
-    }
-
-    const debounce = (fn, delay = 350) => {
-      let t = null;
-      return (...args) => {
-        if (t) clearTimeout(t);
-        t = setTimeout(() => fn.apply(null, args), delay);
-      };
-    };
-
-    if (form) {
-      // Dependencia Marca -> Modelo
-      if (selMarcaFiltro) {
-        selMarcaFiltro.addEventListener('change', () => {
-          buildModeloOptionsFilter(selMarcaFiltro.value, '');
-          filterRows();
-        });
-      }
-      if (selModeloFiltro) selModeloFiltro.addEventListener('change', filterRows);
-      if (selTipoFiltro) selTipoFiltro.addEventListener('change', filterRows);
-      if (selUbicacionFiltro) selUbicacionFiltro.addEventListener('change', filterRows);
-      if (selEstatusFiltro) selEstatusFiltro.addEventListener('change', filterRows);
+      [selTipo, selModelo, selUbic, selEst].forEach(sel => {
+          if (sel) sel.addEventListener('change', submitFilters);
+      });
 
       if (inputQ) {
-        const debouncedFilter = debounce(filterRows, 350);
-        inputQ.addEventListener('input', () => {
-          const val = inputQ.value.trim();
-          // Filtra sólo con 0 o >=3 caracteres para mejorar UX
-          /*if (val.length === 0 || val.length >= 3)*/ debouncedFilter();
-        });
-        inputQ.addEventListener('blur', () => {
-          const val = inputQ.value.trim();
-          if (val.length === 0 || val.length >= 3) filterRows();
-        });
-        inputQ.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') { e.preventDefault(); filterRows(); }
-        });
+          inputQ.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const v = (inputQ.value || '').trim();
+                  if (v !== lastSubmittedQ) submitFilters();
+              }
+          });
+          // En blur: no envíes si está vacío y ya estaba vacío (no refrescar)
+          inputQ.addEventListener('blur', () => {
+              const v = (inputQ.value || '').trim();
+              // Si no cambió, no enviar
+              if (v === lastSubmittedQ) return;
+              // Si está vacío y el último enviado también estaba vacío, no enviar
+              if (v === '' && lastSubmittedQ === '') return;
+              submitFilters();
+          });
       }
 
-      // Inicializar opciones de modelo y aplicar filtro inicial (valores actuales)
-      if (selMarcaFiltro && selModeloFiltro) {
-        const idMarca = initialIdMarca && initialIdMarca !== 'null' ? initialIdMarca : selMarcaFiltro.value;
-        const idModelo = initialIdModelo && initialIdModelo !== 'null' ? initialIdModelo : '';
-        buildModeloOptionsFilter(idMarca, idModelo);
-      }
-      // Primer filtrado para respetar los valores seleccionados
-      filterRows();
-    }
+      // Apagar overlay si la página se restaura desde el historial (bfcache) o vuelve a ser visible
+      window.addEventListener('pageshow', (e) => {
+          // Siempre quita el loading al “mostrar” la página; útil en restauraciones (e.persisted)
+          hideLoading();
+      });
+      document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') hideLoading();
+      });
+      window.addEventListener('popstate', hideLoading);
   })();
+
+  // Mostrar overlay al navegar por la paginación y animar tabla al cargar
+  (() => {
+      // Overlay en clic de paginación
+      document.addEventListener('click', (e) => {
+          const a = e.target.closest('.pagination a');
+          if (!a) return;
+          // Permite abrir en nueva pestaña sin overlay
+          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+          document.body.classList.add('loading');
+          // No preventDefault: dejamos que el enlace navegue
+      });
+
+      // Aparición suave de la tabla tras carga
+      window.addEventListener('DOMContentLoaded', () => {
+          const tw = document.querySelector('.table-wrapper');
+          if (tw) tw.classList.add('table-appear');
+          // Asegura que el overlay no quede activo en cargas normales
+          document.body.classList.remove('loading');
+      });
+  })();
+
+
 
   // =======================
   // Modal de edición
@@ -1330,7 +1311,8 @@
       'disponible': 'status-disponible',
       'asignado': 'status-asignado',
       'asigando': 'status-asignado',       // tolera el typo
-      'en reparacion': 'status-reparacion' // sin acento
+      'en reparacion': 'status-reparacion', // sin acento
+        'desuso': 'status-desuso',
     };
     Array.from(tbody.rows).forEach(tr => {
       const estText = norm(tr.cells[5] ? tr.cells[5].textContent : '');
