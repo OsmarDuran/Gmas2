@@ -69,20 +69,28 @@ public class CentroDAO {
     // LISTAR / BUSCAR
     // =========================
     public List<Centro> listarTodos(int limit, int offset) {
-        String sql = "SELECT id_centro, nombre, id_ubicacion, notas " +
-                "FROM centro ORDER BY nombre ASC LIMIT ? OFFSET ?";
+        String sql = "SELECT id_centro, nombre, id_ubicacion, notas FROM centro ORDER BY nombre ASC LIMIT ? OFFSET ?";
         try (Connection cn = Conexion.getConexion();
              PreparedStatement ps = cn.prepareStatement(sql)) {
-
             ps.setInt(1, limit);
             ps.setInt(2, offset);
             try (ResultSet rs = ps.executeQuery()) {
-                return mapList(rs);
+                List<Centro> list = new ArrayList<>();
+                while (rs.next()) {
+                    Centro c = new Centro();
+                    c.setIdCentro(rs.getInt("id_centro"));
+                    c.setNombre(rs.getString("nombre"));
+                    c.setIdUbicacion(rs.getInt("id_ubicacion"));
+                    c.setNotas(rs.getString("notas"));
+                    list.add(c);
+                }
+                return list;
             }
         } catch (SQLException ex) {
             throw new RuntimeException("Error al listar centros", ex);
         }
     }
+
 
     public List<Centro> listarPorUbicacion(int idUbicacion, int limit, int offset) {
         String sql = "SELECT id_centro, nombre, id_ubicacion, notas " +

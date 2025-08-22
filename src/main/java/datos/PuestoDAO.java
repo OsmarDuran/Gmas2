@@ -69,20 +69,27 @@ public class PuestoDAO {
     // LISTAR / BUSCAR
     // =========================
     public List<Puesto> listarTodos(int limit, int offset) {
-        String sql = "SELECT id_puesto, nombre, notas FROM puesto " +
-                "ORDER BY nombre ASC LIMIT ? OFFSET ?";
+        String sql = "SELECT id_puesto, nombre, notas FROM puesto ORDER BY nombre ASC LIMIT ? OFFSET ?";
         try (Connection cn = Conexion.getConexion();
              PreparedStatement ps = cn.prepareStatement(sql)) {
-
             ps.setInt(1, limit);
             ps.setInt(2, offset);
             try (ResultSet rs = ps.executeQuery()) {
-                return mapList(rs);
+                List<Puesto> list = new ArrayList<>();
+                while (rs.next()) {
+                    Puesto p = new Puesto();
+                    p.setIdPuesto(rs.getInt("id_puesto"));
+                    p.setNombre(rs.getString("nombre"));
+                    p.setNotas(rs.getString("notas"));
+                    list.add(p);
+                }
+                return list;
             }
         } catch (SQLException ex) {
             throw new RuntimeException("Error al listar puestos", ex);
         }
     }
+
 
     public List<Puesto> buscarPorNombre(String query, int limit, int offset) {
         String like = "%" + query + "%";

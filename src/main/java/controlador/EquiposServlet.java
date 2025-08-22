@@ -39,6 +39,8 @@ public class EquiposServlet extends HttpServlet {
     private static final int UI_LIMIT = 1000; // para cargar catálogos en selects
     private static final int PAGE_SIZE = 12;  // para la tabla
     private static final int STATUS_ASIGNADO = 2; // ID para estatus "Asignado"
+    private static final int STATUS_ELIMINADO = 11; // ID para estatus "Eliminado"
+
 
     private EquipoDAO equipoDAO;
     private TipoEquipoDAO tipoEquipoDAO;
@@ -259,18 +261,40 @@ public class EquiposServlet extends HttpServlet {
                     return;
                 }
                 int id = Integer.parseInt(idParam.trim());
-                equipoDAO.eliminar(id);
-                req.getSession().setAttribute("flashOk", "Equipo eliminado.");
+
+                // 1) Cerrar asignaciones activas (si existen)
+                int cerradas = 0;
+                try {
+                    List<modelo.Asignacion> activas = asignacionDAO.listarPorEquipo(id, false, 1000, 0);
+                    for (modelo.Asignacion a : activas) {
+                        if (asignacionDAO.marcarDevuelto(a.getIdAsignacion(), LocalDateTime.now())) {
+                            cerradas++;
+                        }
+                    }
+                } catch (Exception exAsg) {
+                    // No abortar la operación; solo reportar
+                    req.getSession().setAttribute("flashError",
+                            "Error al cerrar asignaciones activas antes de eliminar (borrado lógico).");
+                }
+
+                // 2) Borrado lógico: cambiar a estatus 11 = Eliminado
+                boolean ok = equipoDAO.actualizarEstatus(id, STATUS_ELIMINADO);
+                if (ok) {
+                    String msg = "Equipo marcado como Eliminado.";
+                    if (cerradas > 0) msg += " Se marcaron " + cerradas + " asignaciones como devueltas.";
+                    req.getSession().setAttribute("flashOk", msg);
+                } else {
+                    req.getSession().setAttribute("flashError", "No se pudo marcar el equipo como Eliminado.");
+                }
             } catch (NumberFormatException ex) {
                 req.getSession().setAttribute("flashError", "Invalid equipment ID format.");
-            } catch (IllegalStateException fk) {
-                req.getSession().setAttribute("flashError", "No se puede eliminar: el equipo tiene dependencias.");
             } catch (Exception ex) {
-                req.getSession().setAttribute("flashError", "Error al eliminar equipo.");
+                req.getSession().setAttribute("flashError", "Error al eliminar (lógico) equipo.");
             }
             resp.sendRedirect(req.getContextPath() + "/equipos");
             return;
         }
+
 
         if ("create".equals(action)) {
             try {
