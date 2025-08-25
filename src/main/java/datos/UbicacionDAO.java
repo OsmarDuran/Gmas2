@@ -226,4 +226,18 @@ public class UbicacionDAO {
         while (rs.next()) list.add(mapRow(rs));
         return list;
     }
+    public String obtenerNombrePorId(Integer idUbicacion) {
+        if (idUbicacion == null) return null;
+        final String sql = "SELECT nombre FROM ubicacion WHERE id_ubicacion = ?";
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setInt(1, idUbicacion);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("nombre") : null;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener nombre de ubicacion por id", ex);
+        }
+    }
+
 }

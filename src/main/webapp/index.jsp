@@ -293,7 +293,7 @@
                         setMsg(data.error || 'No se pudo iniciar el proceso.', false);
                         return;
                     }
-                    setMsg('Código generado. Revisa tu correo (en desarrollo se muestra abajo).', true);
+                    setMsg('Código generado. Si tu correo está registrado, te llegará un correo con el código.', true);
                     step1.style.display = 'none';
                     step2.style.display = '';
                     // Modo dev: muestra el código devuelto (si viene)

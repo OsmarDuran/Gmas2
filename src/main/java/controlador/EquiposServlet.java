@@ -11,6 +11,9 @@ import datos.EquipoSimDAO;
 import datos.EquipoConsumibleDAO;
 import datos.ColorDAO;
 import datos.UsuarioDAO;
+import datos.BitacoraMovimientoDAO;
+import modelo.BitacoraMovimiento;
+
 
 
 import modelo.Equipo;
@@ -53,6 +56,8 @@ public class EquiposServlet extends HttpServlet {
     private EquipoConsumibleDAO equipoConsumibleDAO;
     private ColorDAO colorDAO;
     private UsuarioDAO usuarioDAO;
+    private BitacoraMovimientoDAO bitacoraDAO;
+
 
 
     @Override
@@ -68,6 +73,7 @@ public class EquiposServlet extends HttpServlet {
         this.equipoConsumibleDAO = new EquipoConsumibleDAO();
         this.colorDAO = new ColorDAO();
         this.usuarioDAO = new UsuarioDAO();
+        this.bitacoraDAO = new BitacoraMovimientoDAO();
     }
 
     @Override
@@ -261,6 +267,11 @@ public class EquiposServlet extends HttpServlet {
                     return;
                 }
                 int id = Integer.parseInt(idParam.trim());
+                // Obtener estatus previo para bitácora
+                Equipo previoDelete = null;
+                try {
+                    previoDelete = equipoDAO.obtenerPorId(id);
+                } catch (Exception ignore) {}
 
                 // 1) Cerrar asignaciones activas (si existen)
                 int cerradas = 0;
@@ -283,9 +294,16 @@ public class EquiposServlet extends HttpServlet {
                     String msg = "Equipo marcado como Eliminado.";
                     if (cerradas > 0) msg += " Se marcaron " + cerradas + " asignaciones como devueltas.";
                     req.getSession().setAttribute("flashOk", msg);
+                    // Bitácora: ELIMINAR
+                    Integer userId = getCurrentUserId(req);
+                    Integer estOrigen = (previoDelete != null) ? previoDelete.getIdEstatus() : null;
+                    String notasDel = "Borrado lógico del equipo."
+                            + (cerradas > 0 ? (" Asignaciones cerradas: " + cerradas + ".") : "");
+                    logMovimiento(id, null, "ELIMINAR", estOrigen, STATUS_ELIMINADO, userId, notasDel);
                 } else {
                     req.getSession().setAttribute("flashError", "No se pudo marcar el equipo como Eliminado.");
                 }
+
             } catch (NumberFormatException ex) {
                 req.getSession().setAttribute("flashError", "Invalid equipment ID format.");
             } catch (Exception ex) {
@@ -343,6 +361,21 @@ public class EquiposServlet extends HttpServlet {
                         if (!okEc) throw new RuntimeException("No se pudo crear registro Consumible.");
                     }
                 }
+                // === Bitácora: CREAR ===
+                Integer userId = getCurrentUserId(req);
+                String notasCrear = String.format(
+                        "Alta equipo: tipo=%s, modelo=%s, marca=%s, serie=%s, ubicacion=%s, estatus=%s, ip=%s, puerto=%s",
+                        s(tipoEquipoDAO.obtenerNombrePorId(e.getIdTipo())),
+                        s(modeloDAO.obtenerNombrePorId(e.getIdModelo())),
+                        s(marcaDAO.obtenerNombrePorId(e.getIdMarca())),
+                        s(e.getNumeroSerie()),
+                        s(ubicacionDAO.obtenerNombrePorId(e.getIdUbicacion())),
+                        s(estatusDAO.obtenerNombrePorId(e.getIdEstatus())),
+                        s(e.getIpFija()),
+                        s(e.getPuertoEthernet())
+                );
+
+                logMovimiento(newId, null, "CREAR", null, null, userId, notasCrear);
 
                 req.getSession().setAttribute("flashOk", "Equipo creado correctamente (ID " + newId + ").");
             } catch (NumberFormatException ex) {
@@ -383,12 +416,16 @@ public class EquiposServlet extends HttpServlet {
                 e.setPuertoEthernet(emptyToNull(req.getParameter("puertoEthernet")));
                 e.setNotas(emptyToNull(req.getParameter("notas")));
 
+
+
                 // Determinar si cambió de ASIGNADO -> otro
                 boolean fromAsignadoToOtro = previo != null
                         && previo.getIdEstatus() == STATUS_ASIGNADO
                         && nuevoEstatus != STATUS_ASIGNADO;
 
                 boolean ok = equipoDAO.actualizar(e);
+                if (!ok) throw new RuntimeException("No se pudo actualizar equipo");
+
                 if (ok && fromAsignadoToOtro) {
                     try {
                         List<modelo.Asignacion> activas = asignacionDAO.listarPorEquipo(e.getIdEquipo(), false, 1000, 0);
@@ -406,7 +443,17 @@ public class EquiposServlet extends HttpServlet {
                     req.getSession().setAttribute(ok ? "flashOk" : "flashError",
                             ok ? "Equipo actualizado." : "No se actualizó el equipo.");
                 }
+                // === Bitácora: MODIFICACION ===
+                Integer userId = getCurrentUserId(req);
+                String notas = buildNotasModificacion(previo, e);
 
+                int estOrigen = previo.getIdEstatus();
+                Integer estDestino = (e.getIdEstatus() != estOrigen) ? e.getIdEstatus() : null;
+
+                logMovimiento(idEquipo, null, "MODIFICACION",
+                        (estDestino != null ? estOrigen : null),
+                        estDestino,
+                        userId, notas);
 
             } catch (NumberFormatException ex) {
                 req.getSession().setAttribute("flashError", "Invalid number format in form data.");
@@ -437,4 +484,100 @@ public class EquiposServlet extends HttpServlet {
     private static String trimToNull(String s) {
         return emptyToNull(s);
     }
+
+    private Integer getCurrentUserId(HttpServletRequest req) {
+        HttpSession s = req.getSession(false); // no crear sesión nueva
+        if (s == null) return null;
+
+        Object u = s.getAttribute("userId");
+        if (u instanceof Number) {
+            return ((Number) u).intValue(); // soporta Integer/Long
+        }
+        if (u instanceof String) {
+            try { return Integer.parseInt((String) u); } catch (NumberFormatException ignored) {}
+        }
+        return null;
+    }
+
+
+    private static String s(Object o) { return (o == null) ? "-" : String.valueOf(o); }
+
+    private void logMovimiento(Integer idEquipo, Integer idUsuarioInvolucrado,
+                               String accion, Integer estatusOrigen, Integer estatusDestino,
+                               Integer realizadoPor, String notas) {
+        try {
+            BitacoraMovimiento bm = new BitacoraMovimiento();
+            bm.setIdEquipo(idEquipo);
+            // Evitar NPE por auto-unboxing cuando hay valores opcionales
+            if (idUsuarioInvolucrado != null) {
+                bm.setIdUsuario(idUsuarioInvolucrado);
+            }
+            bm.setAccion(accion);
+            if (estatusOrigen != null) {
+                bm.setEstatusOrigen(estatusOrigen);
+            }
+            if (estatusDestino != null) {
+                bm.setEstatusDestino(estatusDestino);
+            }
+            bm.setRealizadoPor(realizadoPor);
+            bm.setNotas(notas);
+            bitacoraDAO.registrar(bm);
+        } catch (Exception ex) {
+            // No interrumpir el flujo por fallos de bitácora
+            ex.printStackTrace();
+        }
+    }
+
+    private String buildNotasModificacion(Equipo oldE, Equipo newE) {
+        StringBuilder sb = new StringBuilder("Cambios: ");
+
+        // Claves foráneas -> resolver nombres legibles
+        String oldTipo = s(tipoEquipoDAO.obtenerNombrePorId(oldE.getIdTipo()));
+        String newTipo = s(tipoEquipoDAO.obtenerNombrePorId(newE.getIdTipo()));
+        diff(sb, "Tipo", oldTipo, newTipo);
+
+        String oldModelo = s(modeloDAO.obtenerNombrePorId(oldE.getIdModelo()));
+        String newModelo = s(modeloDAO.obtenerNombrePorId(newE.getIdModelo()));
+        diff(sb, "Modelo", oldModelo, newModelo);
+
+        String oldMarca = s(marcaDAO.obtenerNombrePorId(oldE.getIdMarca()));
+        String newMarca = s(marcaDAO.obtenerNombrePorId(newE.getIdMarca()));
+        diff(sb, "Marca", oldMarca, newMarca);
+
+        String oldUbic = s(ubicacionDAO.obtenerNombrePorId(oldE.getIdUbicacion()));
+        String newUbic = s(ubicacionDAO.obtenerNombrePorId(newE.getIdUbicacion()));
+        diff(sb, "Ubicacion", oldUbic, newUbic);
+
+        String oldEst = s(estatusDAO.obtenerNombrePorId(oldE.getIdEstatus()));
+        String newEst = s(estatusDAO.obtenerNombrePorId(newE.getIdEstatus()));
+        diff(sb, "Estatus", oldEst, newEst);
+
+        // Campos directos
+        diff(sb, "NumeroSerie", s(oldE.getNumeroSerie()), s(newE.getNumeroSerie()));
+        diff(sb, "IPFija", s(oldE.getIpFija()), s(newE.getIpFija()));
+        diff(sb, "PuertoEth", s(oldE.getPuertoEthernet()), s(newE.getPuertoEthernet()));
+        diff(sb, "Notas", s(oldE.getNotas()), s(newE.getNotas()));
+
+        // === Subentidades ===
+        var simA = equipoSimDAO.obtenerPorIdEquipo(oldE.getIdEquipo());
+        var simB = equipoSimDAO.obtenerPorIdEquipo(newE.getIdEquipo());
+        diff(sb, "SIM.NumeroAsignado", s(simA==null?null:simA.getNumeroAsignado()), s(simB==null?null:simB.getNumeroAsignado()));
+        diff(sb, "SIM.IMEI", s(simA==null?null:simA.getImei()), s(simB==null?null:simB.getImei()));
+
+        var consA = equipoConsumibleDAO.obtenerPorIdEquipo(oldE.getIdEquipo());
+        var consB = equipoConsumibleDAO.obtenerPorIdEquipo(newE.getIdEquipo());
+        String oldColor = (consA==null) ? "-" : s(colorDAO.obtenerNombrePorId(consA.getIdColor()));
+        String newColor = (consB==null) ? "-" : s(colorDAO.obtenerNombrePorId(consB.getIdColor()));
+        diff(sb, "Consumible.Color", oldColor, newColor);
+
+        String out = sb.toString().trim();
+        return out.equals("Cambios:") ? "Sin diferencias detectadas" : out;
+    }
+
+    private void diff(StringBuilder sb, String tag, String a, String b) {
+        String A = s(a), B = s(b);
+        if (!A.equals(B)) sb.append("[").append(tag).append(": '").append(A).append("' → '").append(B).append("'] ");
+    }
 }
+
+

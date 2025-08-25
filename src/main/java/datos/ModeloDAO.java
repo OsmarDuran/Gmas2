@@ -289,4 +289,19 @@ public class ModeloDAO {
         while (rs.next()) list.add(mapRow(rs));
         return list;
     }
+
+    public String obtenerNombrePorId(Integer idModelo) {
+        if (idModelo == null) return null;
+        final String sql = "SELECT nombre FROM modelo WHERE id_modelo = ?";
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setInt(1, idModelo);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("nombre") : null;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener nombre de modelo por id", ex);
+        }
+    }
+
 }

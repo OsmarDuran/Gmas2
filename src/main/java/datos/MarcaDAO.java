@@ -242,4 +242,18 @@ public class MarcaDAO {
         while (rs.next()) list.add(mapRow(rs));
         return list;
     }
+    public String obtenerNombrePorId(Integer idMarca) {
+        if (idMarca == null) return null;
+        final String sql = "SELECT nombre FROM marca WHERE id_marca = ?";
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setInt(1, idMarca);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("nombre") : null;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener nombre de marca por id", ex);
+        }
+    }
+
 }

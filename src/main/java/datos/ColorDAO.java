@@ -170,4 +170,18 @@ public class ColorDAO {
         while (rs.next()) list.add(mapRow(rs));
         return list;
     }
+    public String obtenerNombrePorId(Integer idColor) {
+        if (idColor == null) return null;
+        final String sql = "SELECT nombre FROM color WHERE id_color = ?";
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setInt(1, idColor);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("nombre") : null;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener nombre de color por id", ex);
+        }
+    }
+
 }

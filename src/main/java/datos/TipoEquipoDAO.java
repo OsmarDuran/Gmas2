@@ -180,4 +180,21 @@ public class TipoEquipoDAO {
         while (rs.next()) list.add(mapRow(rs));
         return list;
     }
+
+    public String obtenerNombrePorId(Integer idTipo) {
+        if (idTipo == null) return null;
+        final String sql = "SELECT nombre FROM tipo_equipo WHERE id_tipo = ?";
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+            ps.setInt(1, idTipo);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("nombre") : null;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al obtener nombre de tipo_equipo por id", ex);
+        }
+    }
+
+
+
 }

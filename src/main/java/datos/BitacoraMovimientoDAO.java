@@ -13,7 +13,7 @@ public class BitacoraMovimientoDAO {
     // CREATE
     // =========================
 
-    /** Inserta un movimiento completo. Si realizadoEn es null, usa NOW(). Devuelve el id generado. */
+    /* Inserta un movimiento completo. Si realizadoEn es null, usa NOW(). Devuelve el id generado. */
     public int registrar(BitacoraMovimiento mov) {
         String sql = "INSERT INTO bitacora_movimiento " +
                 "(id_equipo, id_usuario, accion, estatus_origen, estatus_destino, realizado_por, realizado_en, notas) " +

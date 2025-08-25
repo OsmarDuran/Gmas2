@@ -19,7 +19,7 @@ CREATE TABLE estatus (
                          unique (tipo_estatus, nombre)
 );
 
-INSERT INTO estatus(tipo_estatus, nombre) VALUES ("EQUIPO",'Disponible'),("EQUIPO",'Asignado'),("EQUIPO",'En reparación');
+INSERT INTO estatus(tipo_estatus, nombre) VALUES ('EQUIPO','Disponible'),('EQUIPO´','Asignado'),('EQUIPO','En reparación');
 
 CREATE TABLE ubicacion (
                            id_ubicacion INT PRIMARY KEY AUTO_INCREMENT,
@@ -184,9 +184,9 @@ CREATE TABLE asignacion (
 -- -----------------------
 CREATE TABLE bitacora_movimiento (
                                      id_mov int PRIMARY KEY AUTO_INCREMENT,
-                                     id_equipo int NOT NULL,
+                                     id_equipo int NULL,
                                      id_usuario int NULL,          -- involucrado (si aplica)
-                                     accion ENUM('ASIGNAR','DEVOLVER','CAMBIO_ESTATUS','REPARACION_IN','REPARACION_OUT') NOT NULL,
+                                     accion ENUM('ASIGNAR','DEVOLVER','CAMBIO_ESTATUS','REPARACION_IN','REPARACION_OUT', 'CREAR', 'ELIMINAR', 'MODIFICACION') NOT NULL,
                                      estatus_origen int NULL,
                                      estatus_destino int NULL,
                                      realizado_por int NOT NULL,   -- usuario del sistema que ejecuta
