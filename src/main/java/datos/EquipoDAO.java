@@ -95,6 +95,10 @@ public class EquipoDAO {
                     "       e.id_estatus, es.nombre AS estatus_nombre, " +
                     "       e.ip_fija, e.puerto_ethernet, e.notas ";
 
+    private static final String BASE_JOIN_WITH_SIM =
+            BASE_JOIN + "LEFT JOIN equipo_sim esim ON esim.id_equipo = e.id_equipo ";
+
+
     public EquipoDetalle obtenerDetallePorId(int idEquipo) {
         String sql = SELECT_DETALLE + BASE_JOIN + "WHERE e.id_equipo = ?";
         try (Connection cn = Conexion.getConexion();
@@ -108,6 +112,118 @@ public class EquipoDAO {
             throw new RuntimeException("Error al obtener detalle de equipo", ex);
         }
     }
+
+    // Igual que contarConFiltros, pero buscando también en numero_asignado/imei (equipo_sim)
+    public int contarConFiltrosIncluyendoSim(Integer idTipo, Integer idMarca, Integer idModelo,
+                                             Integer idEstatus, Integer idUbicacion, String textoLibre) {
+        StringBuilder sb = new StringBuilder("SELECT COUNT(DISTINCT e.id_equipo) " + BASE_JOIN_WITH_SIM + "WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+
+        if (idTipo != null)      { sb.append("AND e.id_tipo = ? ");      params.add(idTipo); }
+        if (idMarca != null)     { sb.append("AND e.id_marca = ? ");     params.add(idMarca); }
+        if (idModelo != null)    { sb.append("AND e.id_modelo = ? ");    params.add(idModelo); }
+        if (idEstatus != null)   { sb.append("AND e.id_estatus = ? ");   params.add(idEstatus); }
+        if (idUbicacion != null) { sb.append("AND e.id_ubicacion = ? "); params.add(idUbicacion); }
+
+        if (textoLibre != null && !textoLibre.isEmpty()) {
+            sb.append("AND (")
+                    .append("e.numero_serie LIKE ? OR e.notas LIKE ? OR ")
+                    .append("te.nombre LIKE ? OR mo.nombre LIKE ? OR ma.nombre LIKE ? OR ")
+                    .append("u.nombre LIKE ? OR es.nombre LIKE ? OR ")
+                    .append("e.ip_fija LIKE ? OR e.puerto_ethernet LIKE ? OR ")
+                    .append("esim.numero_asignado LIKE ? OR esim.imei LIKE ?")
+                    .append(") ");
+            String like = "%" + textoLibre + "%";
+            // mismos 9 LIKE que ya tenías:
+            params.add(like); // numero_serie
+            params.add(like); // notas
+            params.add(like); // tipo
+            params.add(like); // modelo
+            params.add(like); // marca
+            params.add(like); // ubicacion
+            params.add(like); // estatus
+            params.add(like); // ip
+            params.add(like); // puerto
+            // +2 nuevos (SIM):
+            params.add(like); // numero_asignado
+            params.add(like); // imei
+        }
+
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sb.toString())) {
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) ps.setInt(i + 1, (Integer) p);
+                else ps.setObject(i + 1, p);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return (rs.next() ? rs.getInt(1) : 0);
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al contar equipos (incluyendo SIM) con filtros", ex);
+        }
+    }
+
+
+    // === NUEVO ===
+// Igual que listarConDetalle, pero con JOIN a equipo_sim y búsqueda en numero_asignado/imei
+    public List<EquipoDetalle> listarConDetalleIncluyendoSim(
+            Integer idTipo, Integer idMarca, Integer idModelo,
+            Integer idEstatus, Integer idUbicacion,
+            String textoLibre, int limit, int offset) {
+
+        StringBuilder sb = new StringBuilder(SELECT_DETALLE + BASE_JOIN_WITH_SIM + "WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+
+        if (idTipo != null)      { sb.append("AND e.id_tipo = ? ");      params.add(idTipo); }
+        if (idMarca != null)     { sb.append("AND e.id_marca = ? ");     params.add(idMarca); }
+        if (idModelo != null)    { sb.append("AND e.id_modelo = ? ");    params.add(idModelo); }
+        if (idEstatus != null)   { sb.append("AND e.id_estatus = ? ");   params.add(idEstatus); }
+        if (idUbicacion != null) { sb.append("AND e.id_ubicacion = ? "); params.add(idUbicacion); }
+
+        if (textoLibre != null && !textoLibre.isEmpty()) {
+            sb.append("AND (")
+                    .append("e.numero_serie LIKE ? OR e.notas LIKE ? OR ")
+                    .append("te.nombre LIKE ? OR mo.nombre LIKE ? OR ma.nombre LIKE ? OR ")
+                    .append("u.nombre LIKE ? OR es.nombre LIKE ? OR ")
+                    .append("e.ip_fija LIKE ? OR e.puerto_ethernet LIKE ? OR ")
+                    .append("esim.numero_asignado LIKE ? OR esim.imei LIKE ?")
+                    .append(") ");
+            String like = "%" + textoLibre + "%";
+            params.add(like); // serie
+            params.add(like); // notas
+            params.add(like); // tipo
+            params.add(like); // modelo
+            params.add(like); // marca
+            params.add(like); // ubicacion
+            params.add(like); // estatus
+            params.add(like); // ip
+            params.add(like); // puerto
+            params.add(like); // numero_asignado (SIM)
+            params.add(like); // imei (SIM)
+        }
+
+        sb.append("ORDER BY e.id_equipo DESC LIMIT ? OFFSET ?");
+        params.add(limit); params.add(offset);
+
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sb.toString())) {
+
+            for (int i = 0; i < params.size(); i++) {
+                Object p = params.get(i);
+                if (p instanceof Integer) ps.setInt(i + 1, (Integer) p);
+                else ps.setObject(i + 1, p);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                List<EquipoDetalle> list = new ArrayList<>();
+                while (rs.next()) list.add(mapRowDetalle(rs));
+                return list;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al listar equipos (incluyendo SIM) con detalle", ex);
+        }
+    }
+
 
     public List<EquipoDetalle> listarConDetalle(
             Integer idTipo, Integer idMarca, Integer idModelo,

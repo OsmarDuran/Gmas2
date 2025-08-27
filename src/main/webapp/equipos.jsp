@@ -26,7 +26,7 @@
     </div>
     <div class="menu">
         <a href="equipos.jsp" class="active"><span class="icon fa-solid fa-desktop"></span><span class="text">Equipos</span></a>
-        <a href="sims.jsp"><span class="icon fa-solid fa-sim-card"></span><span class="text">Sims</span> </a>
+        <a href="sims"><span class="icon fa-solid fa-sim-card"></span><span class="text">Sims</span> </a>
         <a href="comsumibles.jsp"><span class="icon fa-solid fa-boxes-stacked"></span><span class="text">Consumibles</span> </a>
         <a href="asignaciones.jsp"><span class="icon fa-solid fa-arrow-right-arrow-left"></span><span class="text">Asignaciones</span></a>
         <a href="catalogos.jsp"><span class="icon fa-solid fa-folder-open"></span><span class="text">Catalogos</span></a>
@@ -212,6 +212,8 @@
         <input type="hidden" name="action" id="formAction" value="save"/>
         <input type="hidden" name="idEquipo" id="idEquipo"/>
         <input type="hidden" name="tipoNombre" id="tipoNombre"/>
+        <input type="hidden" name="returnQuery" id="returnQuery"/>
+
 
         <div class="modal-h">
             <h3 id="modalTitle">Editar equipo</h3>
@@ -577,7 +579,6 @@
   })();
 
 
-
   // =======================
   // Modal de edición
   // =======================
@@ -590,17 +591,20 @@
     const selModeloModal = document.getElementById('idModelo');
     const selEstatusModal = document.getElementById('idEstatus');
     const selTipoModal = document.getElementById('idTipo');
-      const tipoNombreInp = document.getElementById('tipoNombre');
-      const numeroSerieInp = document.getElementById('numeroSerie');
-      const simFields = document.getElementById('simFields');
-      // Campos específicos
-      const simNumeroInp = document.getElementById('simNumeroAsignado');
-      const simImeiInp   = document.getElementById('simImei');
-      const colorConsumibleSel = document.getElementById('idColorConsumible');
-      const consumibleFields = document.getElementById('consumibleFields');
+    const tipoNombreInp = document.getElementById('tipoNombre');
+    const numeroSerieInp = document.getElementById('numeroSerie');
+    const simFields = document.getElementById('simFields');
+    // Campos específicos
+    const simNumeroInp = document.getElementById('simNumeroAsignado');
+    const simImeiInp   = document.getElementById('simImei');
+    const colorConsumibleSel = document.getElementById('idColorConsumible');
+    const consumibleFields = document.getElementById('consumibleFields');
     const asignacionesPanel = document.getElementById('asignacionesPanel');
+    const returnQueryInp = document.getElementById('returnQuery');
 
-    // Control de estatus y asignaciones
+
+
+      // Control de estatus y asignaciones
     const STATUS_ASIGNADO = 2;
     let estatusOriginal = null;
     let estatusSeleccionado = null;
@@ -779,8 +783,10 @@
           if (modalTitle) modalTitle.textContent = 'Editar equipo';
           if (formAction) formAction.value = 'save';
           if (asignacionesPanel) asignacionesPanel.style.display = '';
+          if (returnQueryInp) returnQueryInp.value = (window.location.search || '').replace(/^\?/, '');
 
-          // Set campos base (excepto estatus, se maneja más abajo)
+
+            // Set campos base (excepto estatus, se maneja más abajo)
           document.getElementById('idEquipo').value        = e.idEquipo;
           document.getElementById('idTipo').value          = e.idTipo;
           document.getElementById('numeroSerie').value     = e.numeroSerie ?? '';
@@ -1048,6 +1054,7 @@
 
 <!-- Modal: modo creación y subtipos (SIM/Consumible) -->
 <script>
+
   (() => {
     const dlg  = document.getElementById('editModal');
     const form = document.getElementById('editForm');
@@ -1073,8 +1080,10 @@
     const asignacionesEmpty = document.getElementById('asignacionesEmpty');
     const asignacionesTable = document.getElementById('asignacionesTable');
     const asignacionesTbody = asignacionesTable ? asignacionesTable.querySelector('tbody') : null;
+      const returnQueryInp = document.getElementById('returnQuery');
 
-    function toggleSubtypeFields() {
+
+      function toggleSubtypeFields() {
       const opt = selTipoModal.options[selTipoModal.selectedIndex];
       const nombreTipo = (opt && opt.textContent ? opt.textContent.trim().toUpperCase() : '');
       tipoNombreInp.value = nombreTipo;
@@ -1135,6 +1144,7 @@
       document.getElementById('notas').value = '';
       if (numeroSerieInp) numeroSerieInp.required = true;
 
+        if (returnQueryInp) returnQueryInp.value = (window.location.search || '').replace(/^\?/, '');
 
         // Ocultar panel de asignaciones en nuevo
       if (asignacionesPanel) asignacionesPanel.style.display = 'none';

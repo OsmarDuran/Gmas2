@@ -17,6 +17,7 @@ select, option { font-family: inherit; }
     box-shadow: 2px 3px 5px rgba(0,0,0,0.3);
     border-radius: 60px;
     transition: height .4s;
+
 }
 .box-menu.dragging{ cursor: grabbing; }
 .full-menu{height: 470px;}

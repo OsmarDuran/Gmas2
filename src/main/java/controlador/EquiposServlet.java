@@ -41,8 +41,8 @@ public class EquiposServlet extends HttpServlet {
 
     private static final int UI_LIMIT = 1000; // para cargar catálogos en selects
     private static final int PAGE_SIZE = 12;  // para la tabla
-    private static final int STATUS_ASIGNADO = 2; // ID para estatus "Asignado"
-    private static final int STATUS_ELIMINADO = 11; // ID para estatus "Eliminado"
+    private static final int STATUS_ASIGNADO = 2; //  para estatus "Asignado"
+    private static final int STATUS_ELIMINADO = 11; // para estatus "Eliminado"
 
 
     private EquipoDAO equipoDAO;
@@ -216,15 +216,44 @@ public class EquiposServlet extends HttpServlet {
 
         int pageReq = Math.max(1, parseIntOrDefault(req.getParameter("page"), 1));
         int limit   = PAGE_SIZE;
-        // Total de registros con filtros
-        int total = equipoDAO.contarConFiltros(idTipo, idMarca, idModelo, idEstatus, idUbicacion, q);
+
+        // Cálculo de total excluyendo Eliminados sin desalinear
+        int total;
+        if (idEstatus != null && idEstatus == STATUS_ELIMINADO) {
+            total = 0;
+        } else if (idEstatus == null) {
+            int totalRaw  = equipoDAO.contarConFiltros(idTipo, idMarca, idModelo, null, idUbicacion, q);
+            int elimCount = equipoDAO.contarConFiltros(idTipo, idMarca, idModelo, STATUS_ELIMINADO, idUbicacion, q);
+            total = Math.max(0, totalRaw - elimCount);
+        } else {
+            // idEstatus distinto de Eliminado: el DAO ya devuelve solo ese estatus
+            total = equipoDAO.contarConFiltros(idTipo, idMarca, idModelo, idEstatus, idUbicacion, q);
+        }
+
         int totalPages = Math.max(1, (int) Math.ceil(total / (double) limit));
         int page = Math.min(pageReq, totalPages);
         int offset = (page - 1) * limit;
 
-
-        List<EquipoDetalle> equipos = equipoDAO.listarConDetalle(
-                idTipo, idMarca, idModelo, idEstatus, idUbicacion, q, limit, offset);
+        // Listado: rellena la página saltando Eliminados
+        List<EquipoDetalle> equipos = new java.util.ArrayList<>();
+        if (!(idEstatus != null && idEstatus == STATUS_ELIMINADO) && total > 0) {
+            int batchOffset = offset;
+            int guard = 0;
+            final int MAX_BATCHES = 50; // evita bucles largos si hay muchos eliminados intercalados
+            while (equipos.size() < limit && guard++ < MAX_BATCHES) {
+                List<EquipoDetalle> lote = equipoDAO.listarConDetalle(
+                        idTipo, idMarca, idModelo, idEstatus, idUbicacion, q, limit, batchOffset);
+                if (lote == null || lote.isEmpty()) break;
+                for (EquipoDetalle d : lote) {
+                    if (d.getIdEstatus() != STATUS_ELIMINADO) {
+                        equipos.add(d);
+                        if (equipos.size() >= limit) break;
+                    }
+                }
+                // Avanza a la siguiente ventana si aún no llenamos
+                batchOffset += limit;
+            }
+        }
 
         // ===== Catálogos usando TU API =====
         req.setAttribute("tipos",       tipoEquipoDAO.listarTodos(UI_LIMIT, 0));
@@ -385,9 +414,12 @@ public class EquiposServlet extends HttpServlet {
             } catch (Exception ex) {
                 req.getSession().setAttribute("flashError", "Error al crear equipo.");
             }
-            resp.sendRedirect(req.getContextPath() + "/equipos");
+            String rq = req.getParameter("returnQuery");
+            String to = req.getContextPath() + "/equipos" + ((rq != null && !rq.trim().isEmpty()) ? ("?" + rq.trim()) : "");
+            resp.sendRedirect(to);
             return;
         }
+
 
         if ("save".equals(action)) {
             try {
@@ -416,7 +448,11 @@ public class EquiposServlet extends HttpServlet {
                 e.setPuertoEthernet(emptyToNull(req.getParameter("puertoEthernet")));
                 e.setNotas(emptyToNull(req.getParameter("notas")));
 
-
+                // Snapshots previos de subtipos (para bitácora)
+                modelo.EquipoSim simPrev = null;
+                modelo.EquipoConsumible consPrev = null;
+                try { simPrev = equipoSimDAO.obtenerPorIdEquipo(idEquipo); } catch (Exception ignore) {}
+                try { consPrev = equipoConsumibleDAO.obtenerPorIdEquipo(idEquipo); } catch (Exception ignore) {}
 
                 // Determinar si cambió de ASIGNADO -> otro
                 boolean fromAsignadoToOtro = previo != null
@@ -426,6 +462,76 @@ public class EquiposServlet extends HttpServlet {
                 boolean ok = equipoDAO.actualizar(e);
                 if (!ok) throw new RuntimeException("No se pudo actualizar equipo");
 
+// === Actualizar subtipos: SIM y Consumible ===
+                try {
+                    final String tnUpper = (tn != null ? tn : "").toUpperCase();
+                    final boolean isSIM  = tnUpper.contains("SIM");
+                    final boolean isCONS = tnUpper.contains("CONSUM");
+
+                    // ----- SIM -----
+                    String nuevoNumero = emptyToNull(req.getParameter("simNumeroAsignado"));
+                    String nuevoImei   = emptyToNull(req.getParameter("simImei"));
+                    boolean simExiste  = equipoSimDAO.existeParaEquipo(idEquipo);
+
+                    if (isSIM) {
+                        if (simExiste) {
+                            // Actualiza ambos campos (pueden ser null si se limpian)
+                            modelo.EquipoSim sim = new modelo.EquipoSim();
+                            sim.setIdEquipo(idEquipo);
+                            sim.setNumeroAsignado(nuevoNumero);
+                            sim.setImei(nuevoImei);
+                            equipoSimDAO.actualizar(sim);
+                        } else {
+                            // Crear solo si hay al menos un valor
+                            if (nuevoNumero != null || nuevoImei != null) {
+                                modelo.EquipoSim sim = new modelo.EquipoSim();
+                                sim.setIdEquipo(idEquipo);
+                                sim.setNumeroAsignado(nuevoNumero);
+                                sim.setImei(nuevoImei);
+                                equipoSimDAO.crear(sim);
+                            }
+                        }
+                    } else {
+                        // Limpieza opcional si deja de ser SIM
+                        if (simExiste) equipoSimDAO.eliminar(idEquipo);
+                    }
+
+                    // ----- Consumible (Color) -----
+                    Integer idColor = parseIntOrNull(req.getParameter("idColorConsumible"));
+                    boolean consExiste = equipoConsumibleDAO.existeParaEquipo(idEquipo);
+
+                    if (isCONS) {
+                        if (idColor != null) {
+                            if (consExiste) {
+                                equipoConsumibleDAO.actualizarColor(idEquipo, idColor);
+                            } else {
+                                modelo.EquipoConsumible ec = new modelo.EquipoConsumible();
+                                ec.setIdEquipo(idEquipo);
+                                ec.setIdColor(idColor);
+                                equipoConsumibleDAO.crear(ec);
+                            }
+                        } else {
+                            if (consExiste) {
+                                equipoConsumibleDAO.eliminar(idEquipo);
+                            }
+                        }
+                    } else {
+                        // Limpieza opcional si deja de ser Consumible
+                        if (consExiste) equipoConsumibleDAO.eliminar(idEquipo);
+                    }
+                } catch (IllegalArgumentException iaeSub) {
+                    req.getSession().setAttribute("flashError", iaeSub.getMessage());
+                } catch (Exception exSub) {
+                    req.getSession().setAttribute("flashError", "Equipo actualizado, pero falló la actualización de SIM/Consumible.");
+                }
+
+                // Snapshots nuevos de subtipos (para bitácora)
+                modelo.EquipoSim simNow = null;
+                modelo.EquipoConsumible consNow = null;
+                try { simNow = equipoSimDAO.obtenerPorIdEquipo(idEquipo); } catch (Exception ignore) {}
+                try { consNow = equipoConsumibleDAO.obtenerPorIdEquipo(idEquipo); } catch (Exception ignore) {}
+
+                // Cerrar asignaciones si salió de ASIGNADO
                 if (ok && fromAsignadoToOtro) {
                     try {
                         List<modelo.Asignacion> activas = asignacionDAO.listarPorEquipo(e.getIdEquipo(), false, 1000, 0);
@@ -445,7 +551,8 @@ public class EquiposServlet extends HttpServlet {
                 }
                 // === Bitácora: MODIFICACION ===
                 Integer userId = getCurrentUserId(req);
-                String notas = buildNotasModificacion(previo, e);
+                // Usa snapshots para detectar cambios reales en SIM/Consumible
+                String notas = buildNotasModificacionConSubtipos(previo, e, simPrev, simNow, consPrev, consNow);
 
                 int estOrigen = previo.getIdEstatus();
                 Integer estDestino = (e.getIdEstatus() != estOrigen) ? e.getIdEstatus() : null;
@@ -454,7 +561,6 @@ public class EquiposServlet extends HttpServlet {
                         (estDestino != null ? estOrigen : null),
                         estDestino,
                         userId, notas);
-
             } catch (NumberFormatException ex) {
                 req.getSession().setAttribute("flashError", "Invalid number format in form data.");
             } catch (IllegalArgumentException iae) {
@@ -462,7 +568,9 @@ public class EquiposServlet extends HttpServlet {
             } catch (Exception ex) {
                 req.getSession().setAttribute("flashError", "Error al actualizar equipo.");
             }
-            resp.sendRedirect(req.getContextPath() + "/equipos");
+            String rq = req.getParameter("returnQuery");
+            String to = req.getContextPath() + "/equipos" + ((rq != null && !rq.trim().isEmpty()) ? ("?" + rq.trim()) : "");
+            resp.sendRedirect(to);
         }
     }
 
@@ -570,9 +678,59 @@ public class EquiposServlet extends HttpServlet {
         String newColor = (consB==null) ? "-" : s(colorDAO.obtenerNombrePorId(consB.getIdColor()));
         diff(sb, "Consumible.Color", oldColor, newColor);
 
-        String out = sb.toString().trim();
-        return out.equals("Cambios:") ? "Sin diferencias detectadas" : out;
+        String result = sb.toString().trim();
+        return result.equals("Cambios:") ? "Sin diferencias detectadas" : result;
     }
+    // ... existing code ...
+    private String buildNotasModificacionConSubtipos(Equipo oldE, Equipo newE,
+                                                     modelo.EquipoSim simPrev, modelo.EquipoSim simNow,
+                                                     modelo.EquipoConsumible consPrev, modelo.EquipoConsumible consNow) {
+        StringBuilder sb = new StringBuilder("Cambios: ");
+
+        // Claves foráneas -> resolver nombres legibles
+        String oldTipo = s(tipoEquipoDAO.obtenerNombrePorId(oldE.getIdTipo()));
+        String newTipo = s(tipoEquipoDAO.obtenerNombrePorId(newE.getIdTipo()));
+        diff(sb, "Tipo", oldTipo, newTipo);
+
+        String oldModelo = s(modeloDAO.obtenerNombrePorId(oldE.getIdModelo()));
+        String newModelo = s(modeloDAO.obtenerNombrePorId(newE.getIdModelo()));
+        diff(sb, "Modelo", oldModelo, newModelo);
+
+        String oldMarca = s(marcaDAO.obtenerNombrePorId(oldE.getIdMarca()));
+        String newMarca = s(marcaDAO.obtenerNombrePorId(newE.getIdMarca()));
+        diff(sb, "Marca", oldMarca, newMarca);
+
+        String oldUbic = s(ubicacionDAO.obtenerNombrePorId(oldE.getIdUbicacion()));
+        String newUbic = s(ubicacionDAO.obtenerNombrePorId(newE.getIdUbicacion()));
+        diff(sb, "Ubicacion", oldUbic, newUbic);
+
+        String oldEst = s(estatusDAO.obtenerNombrePorId(oldE.getIdEstatus()));
+        String newEst = s(estatusDAO.obtenerNombrePorId(newE.getIdEstatus()));
+        diff(sb, "Estatus", oldEst, newEst);
+
+        // Campos directos
+        diff(sb, "NumeroSerie", s(oldE.getNumeroSerie()), s(newE.getNumeroSerie()));
+        diff(sb, "IPFija", s(oldE.getIpFija()), s(newE.getIpFija()));
+        diff(sb, "PuertoEth", s(oldE.getPuertoEthernet()), s(newE.getPuertoEthernet()));
+        diff(sb, "Notas", s(oldE.getNotas()), s(newE.getNotas()));
+
+        // Subentidades usando snapshots
+        String simNumA = s(simPrev == null ? null : simPrev.getNumeroAsignado());
+        String simNumB = s(simNow  == null ? null : simNow.getNumeroAsignado());
+        String simImeiA= s(simPrev == null ? null : simPrev.getImei());
+        String simImeiB= s(simNow  == null ? null : simNow.getImei());
+        diff(sb, "SIM.NumeroAsignado", simNumA, simNumB);
+        diff(sb, "SIM.IMEI", simImeiA, simImeiB);
+
+        String oldColor = (consPrev == null) ? "-" : s(colorDAO.obtenerNombrePorId(consPrev.getIdColor()));
+        String newColor = (consNow  == null) ? "-" : s(colorDAO.obtenerNombrePorId(consNow.getIdColor()));
+        diff(sb, "Consumible.Color", oldColor, newColor);
+
+        String result = sb.toString().trim();
+        return result.equals("Cambios:") ? "Sin diferencias detectadas" : result;
+    }
+
+
 
     private void diff(StringBuilder sb, String tag, String a, String b) {
         String A = s(a), B = s(b);
