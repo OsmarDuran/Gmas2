@@ -21,36 +21,7 @@ public final class EmailService {
         boolean debug = Boolean.parseBoolean(getenv("SMTP_DEBUG", "false"));
         String trust  = getenv("SMTP_TRUST", null); // ej. "smtp.gmail.com" o "*"
 
-        System.out.println("===== EmailService DEBUG ENV =====");
-        System.out.println("SMTP_HOST=" + nv(host));
-        System.out.println("SMTP_PORT=" + nv(port));
-        System.out.println("SMTP_USER=" + maskUser(user));
-        System.out.println("SMTP_PASS=" + maskSecret(pass));
-        System.out.println("SMTP_FROM=" + maskUser(from));
-        System.out.println("SMTP_TLS=" + tls + " | SMTP_TLS_REQUIRED=" + tlsReq);
-        System.out.println("SMTP_SSL=" + ssl);
-        System.out.println("SMTP_TRUST=" + (trust == null ? "-" : trust));
-        System.out.println("JVM=" + System.getProperty("java.runtime.name") + " " + System.getProperty("java.runtime.version"));
-        System.out.println("OS=" + System.getProperty("os.name") + " " + System.getProperty("os.version"));
-        System.out.println("==================================");
 
-        if (debug) {
-            // Dump de variables de entorno relevantes y configuración efectiva
-            String mode = ssl ? "SSL(465)" : (tls ? ("STARTTLS(" + (tlsReq ? "required" : "optional") + ", 587)") : "PLAIN(¡no recomendado!)");
-            System.out.println("===== EmailService DEBUG ENV =====");
-            System.out.println("SMTP_HOST=" + nv(host));
-            System.out.println("SMTP_PORT=" + nv(port));
-            System.out.println("SMTP_USER=" + maskUser(user));
-            System.out.println("SMTP_PASS=" + maskSecret(pass));
-            System.out.println("SMTP_FROM=" + maskUser(from));
-            System.out.println("SMTP_TLS=" + tls + " | SMTP_TLS_REQUIRED=" + tlsReq);
-            System.out.println("SMTP_SSL=" + ssl);
-            System.out.println("SMTP_TRUST=" + (trust == null ? "-" : trust));
-            System.out.println("JVM=" + System.getProperty("java.runtime.name") + " " + System.getProperty("java.runtime.version"));
-            System.out.println("OS=" + System.getProperty("os.name") + " " + System.getProperty("os.version"));
-            System.out.println("Modo efectivo=" + mode);
-            System.out.println("==================================");
-        }
 
         if (host == null || user == null || pass == null || from == null) {
             throw new IllegalStateException("SMTP no configurado (SMTP_HOST/USER/PASS/FROM)");
