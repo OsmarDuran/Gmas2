@@ -1,61 +1,57 @@
 package datos;
 
-import java.sql.*;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 public class Conexion {
 
-    private static final String BD = "gmas2";
-    private static final String URL = "jdbc:mysql://viaduct.proxy.rlwy.net:55075/" + BD
-            + "?useSSL=false&serverTimezone=UTC";
-    private static final String USER = "root";
-    private static final String PASSWORD = "VjzJWzhoqWkVCKVwIMXnVpoZkjfodggT";
+    private static final HikariDataSource DS;
 
+    static {
+        // Lee de variables de entorno si existen, con fallback
+        String host = getenv("DB_HOST", "viaduct.proxy.rlwy.net");
+        String port = getenv("DB_PORT", "55075");
+        String db   = getenv("DB_NAME", "railway");
+        String user = getenv("DB_USER", "root");
+        String pass = getenv("DB_PASS", "VjzJWzhoqWkVCKVwIMXnVpoZkjfodggT");
 
+        String jdbcUrl = "jdbc:mysql://" + host + ":" + port + "/" + db
+                + "?useUnicode=true&characterEncoding=UTF-8"
+                + "&useSSL=false&serverTimezone=UTC"
+                + "&cachePrepStmts=true&prepStmtCacheSize=256&prepStmtCacheSqlLimit=2048"
+                + "&useServerPrepStmts=true&rewriteBatchedStatements=true"
+                + "&tcpKeepAlive=true&connectTimeout=2000&socketTimeout=10000";
 
-    public static Connection getConexion() {
-        Connection connection = null;
-        try {
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("Conexion exitosa");
-        } catch (SQLException e) {
-            System.out.println("Error al intentar conectarse a la base de datos: " + e);
-        }
-        return connection;
+        HikariConfig cfg = new HikariConfig();
+        cfg.setJdbcUrl(jdbcUrl);
+        cfg.setUsername(user);
+        cfg.setPassword(pass);
+
+        // Ajusta a tu plan de Railway (pocas conexiones, pero calientes)
+        cfg.setMaximumPoolSize(10);
+        cfg.setMinimumIdle(2);
+        cfg.setIdleTimeout(120_000);     // 2 min
+        cfg.setConnectionTimeout(2_000); // 2 s para esperar una conex
+        cfg.setMaxLifetime(600_000);     // 10 min
+        cfg.setPoolName("Gmas2Pool");
+
+        DS = new HikariDataSource(cfg);
     }
 
-
-    public static void cerrarConexion(Connection connection) {
-        if (connection != null) {
-            try {
-                connection.close();
-                System.out.println("Conexion cerrada correctamente.");
-            } catch (SQLException e) {
-                System.err.println("Error al cerrar la conexion: " + e.getMessage());
-            }
-        }
+    private static String getenv(String k, String def) {
+        String v = System.getenv(k);
+        return (v == null || v.isEmpty()) ? def : v;
     }
 
-    public static void cerrarStatement(Statement statement) {
-        if (statement != null) {
-            try {
-                statement.close();
-                System.out.println("Statement cerrado correctamente.");
-            } catch (SQLException e) {
-                System.err.println("Error al cerrar el Statement: " + e.getMessage());
-            }
-        }
+    public static Connection getConexion() throws SQLException {
+        return DS.getConnection();
     }
 
-    public static void cerrarResultSet(ResultSet resultSet) {
-        if (resultSet != null) {
-            try {
-                resultSet.close();
-                System.out.println("ResultSet cerrado correctamente.");
-            } catch (SQLException e) {
-                System.err.println("Error al cerrar el ResultSet: " + e.getMessage());
-            }
-        }
+    public static DataSource getDataSource() {
+        return DS;
     }
-
-
 }
