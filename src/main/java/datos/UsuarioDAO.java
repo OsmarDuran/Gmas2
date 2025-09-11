@@ -117,7 +117,6 @@ public class UsuarioDAO {
             throw new RuntimeException("Error al obtener login info", ex);
         }
     }
-
     // =========================
     // UPDATE
     // =========================

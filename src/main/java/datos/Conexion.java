@@ -5,9 +5,11 @@ import java.sql.*;
 public class Conexion {
 
     private static final String BD = "gmas2";
-    private static final String URL = "jdbc:mysql://localhost:3306/" + BD;
+    private static final String URL = "jdbc:mysql://viaduct.proxy.rlwy.net:55075/" + BD
+            + "?useSSL=false&serverTimezone=UTC";
     private static final String USER = "root";
-    private static final String PASSWORD = "root";
+    private static final String PASSWORD = "VjzJWzhoqWkVCKVwIMXnVpoZkjfodggT";
+
 
 
     public static Connection getConexion() {
