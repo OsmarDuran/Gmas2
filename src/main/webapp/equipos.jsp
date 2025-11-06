@@ -27,7 +27,7 @@
     <div class="menu">
         <a href="equipos.jsp" class="active"><span class="icon fa-solid fa-desktop"></span><span class="text">Equipos</span></a>
         <a href="sims"><span class="icon fa-solid fa-sim-card"></span><span class="text">Sims</span> </a>
-        <a href="comsumibles.jsp"><span class="icon fa-solid fa-boxes-stacked"></span><span class="text">Consumibles</span> </a>
+        <a href="consumibles"><span class="icon fa-solid fa-boxes-stacked"></span><span class="text">Consumibles</span> </a>
         <a href="asignaciones.jsp"><span class="icon fa-solid fa-arrow-right-arrow-left"></span><span class="text">Asignaciones</span></a>
         <a href="catalogos.jsp"><span class="icon fa-solid fa-folder-open"></span><span class="text">Catalogos</span></a>
         <a href="usuarios.jsp"><span class="icon fa-solid fa-users"></span><span class="text">Usuarios</span></a>

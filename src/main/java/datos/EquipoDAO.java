@@ -364,7 +364,7 @@ public class EquipoDAO {
 
     public int contarConFiltros(Integer idTipo, Integer idMarca, Integer idModelo,
                                 Integer idEstatus, Integer idUbicacion, String textoLibre) {
-        // Contar con los mismos JOINs que el listado, para poder filtrar por columnas de catálogos
+        // Contar con los mismos JOIN's que el listado, para poder filtrar por columnas de catálogos
         StringBuilder sb = new StringBuilder("SELECT COUNT(*) " + BASE_JOIN + "WHERE 1=1 ");
         List<Object> params = new ArrayList<>();
         if (idTipo != null)      { sb.append("AND e.id_tipo = ? ");      params.add(idTipo); }
@@ -404,6 +404,113 @@ public class EquipoDAO {
             throw new RuntimeException("Error al contar equipos con filtros", ex);
         }
     }
+
+    // En EquipoDAO:
+
+    /** Conteo con filtros, uniendo equipo_consumible y color (LEFT JOIN). */
+    public int contarConFiltrosIncluyendoConsumible(Integer idTipo, Integer idMarca, Integer idModelo,
+                                                    Integer idEstatus, Integer idUbicacion, Integer idColor, String q) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SELECT COUNT(*) ")
+                .append("FROM equipo e ")
+                .append("LEFT JOIN equipo_consumible ec ON ec.id_equipo = e.id_equipo ")
+                .append("LEFT JOIN color c ON c.id_color = ec.id_color ")
+                .append("WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+
+        if (idTipo != null)     { sb.append(" AND e.id_tipo = ?"); params.add(idTipo); }
+        if (idMarca != null)    { sb.append(" AND e.id_marca = ?"); params.add(idMarca); }
+        if (idModelo != null)   { sb.append(" AND e.id_modelo = ?"); params.add(idModelo); }
+        if (idEstatus != null)  { sb.append(" AND e.id_estatus = ?"); params.add(idEstatus); }
+        if (idUbicacion != null){ sb.append(" AND e.id_ubicacion = ?"); params.add(idUbicacion); }
+        if (idColor != null)    { sb.append(" AND ec.id_color = ?"); params.add(idColor); }
+        if (q != null && !q.isEmpty()) {
+            sb.append(" AND (e.numero_serie LIKE ? OR EXISTS (")
+                    .append("   SELECT 1 FROM modelo m WHERE m.id_modelo=e.id_modelo AND m.nombre LIKE ?")
+                    .append(" ) OR EXISTS (")
+                    .append("   SELECT 1 FROM marca  mr WHERE mr.id_marca=e.id_marca AND mr.nombre LIKE ?")
+                    .append(" ))");
+            String like = "%" + q + "%";
+            params.add(like); params.add(like); params.add(like);
+        }
+
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sb.toString())) {
+            for (int i=0;i<params.size();i++) ps.setObject(i+1, params.get(i));
+            try (ResultSet rs = ps.executeQuery()) { rs.next(); return rs.getInt(1); }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al contar equipos (consumible)", ex);
+        }
+    }
+
+    /** Página de resultados con detalle, incluyendo nombre de color (si aplica). */
+    public List<EquipoDetalle> listarConDetalleIncluyendoConsumible(Integer idTipo, Integer idMarca, Integer idModelo,
+                                                                    Integer idEstatus, Integer idUbicacion, Integer idColor,
+                                                                    String q, int limit, int offset) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("SELECT e.id_equipo, e.id_tipo, e.id_modelo, e.id_marca, e.id_ubicacion, e.id_estatus, ")
+                .append("e.numero_serie, e.notas, ")
+                .append("m.nombre AS modelo_nombre, mr.nombre AS marca_nombre, u.nombre AS ubicacion_nombre, es.nombre AS estatus_nombre, ")
+                .append("ec.id_color, c.nombre AS color_nombre ")
+                .append("FROM equipo e ")
+                .append("LEFT JOIN modelo m ON m.id_modelo = e.id_modelo ")
+                .append("LEFT JOIN marca  mr ON mr.id_marca  = e.id_marca ")
+                .append("LEFT JOIN ubicacion u ON u.id_ubicacion = e.id_ubicacion ")
+                .append("LEFT JOIN estatus es ON es.id_estatus   = e.id_estatus ")
+                .append("LEFT JOIN equipo_consumible ec ON ec.id_equipo = e.id_equipo ")
+                .append("LEFT JOIN color c ON c.id_color = ec.id_color ")
+                .append("WHERE 1=1 ");
+        List<Object> params = new ArrayList<>();
+
+        if (idTipo != null)     { sb.append(" AND e.id_tipo = ?"); params.add(idTipo); }
+        if (idMarca != null)    { sb.append(" AND e.id_marca = ?"); params.add(idMarca); }
+        if (idModelo != null)   { sb.append(" AND e.id_modelo = ?"); params.add(idModelo); }
+        if (idEstatus != null)  { sb.append(" AND e.id_estatus = ?"); params.add(idEstatus); }
+        if (idUbicacion != null){ sb.append(" AND e.id_ubicacion = ?"); params.add(idUbicacion); }
+        if (idColor != null)    { sb.append(" AND ec.id_color = ?"); params.add(idColor); }
+        if (q != null && !q.isEmpty()) {
+            sb.append(" AND (e.numero_serie LIKE ? OR m.nombre LIKE ? OR mr.nombre LIKE ?)");
+            String like = "%" + q + "%";
+            params.add(like); params.add(like); params.add(like);
+        }
+        sb.append(" ORDER BY e.id_equipo DESC LIMIT ? OFFSET ?");
+        params.add(limit); params.add(offset);
+
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sb.toString())) {
+            for (int i=0;i<params.size();i++) ps.setObject(i+1, params.get(i));
+            try (ResultSet rs = ps.executeQuery()) {
+                List<EquipoDetalle> list = new ArrayList<>();
+                while (rs.next()) {
+                    EquipoDetalle d = mapRowDetalleConColor(rs); // crea este mapper o ajusta el existente
+                    list.add(d);
+                }
+                return list;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al listar equipos (consumible)", ex);
+        }
+    }
+
+    // Ejemplo de mapper extendido (ajústalo a tu clase EquipoDetalle):
+    private EquipoDetalle mapRowDetalleConColor(ResultSet rs) throws SQLException {
+        EquipoDetalle d = new EquipoDetalle();
+        d.setIdEquipo(rs.getInt("id_equipo"));
+        d.setIdTipo(rs.getInt("id_tipo"));
+        d.setIdModelo(rs.getInt("id_modelo"));
+        d.setIdMarca(rs.getInt("id_marca"));
+        d.setIdUbicacion(rs.getInt("id_ubicacion"));
+        d.setIdEstatus(rs.getInt("id_estatus"));
+        d.setNumeroSerie(rs.getString("numero_serie"));
+        d.setNotas(rs.getString("notas"));
+        d.setModeloNombre(rs.getString("modelo_nombre"));
+        d.setMarcaNombre(rs.getString("marca_nombre"));
+        d.setUbicacionNombre(rs.getString("ubicacion_nombre"));
+        d.setEstatusNombre(rs.getString("estatus_nombre"));
+        // si quieres, añade campos auxiliares de color en EquipoDetalle
+        return d;
+    }
+
 
 
     // =========================
