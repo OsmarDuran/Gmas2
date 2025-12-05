@@ -113,6 +113,38 @@ public class EquipoDAO {
         }
     }
 
+    // Lista equipos ASIGNADOS a un usuario (solo asignaciones activas)
+    public List<EquipoDetalle> listarAsignadosAUsuario(int idUsuario, int limit, int offset) {
+        // Ajusta el nombre de la tabla/columnas de asignación a los que tengas
+        String sql =
+                SELECT_DETALLE +
+                        BASE_JOIN +
+                        "JOIN asignacion a ON a.id_equipo = e.id_equipo " +
+                        "WHERE a.id_usuario = ? " +
+                        "  AND a.devuelto_en IS NULL " +   // o la columna que uses para fecha de devolución
+                        "ORDER BY e.id_equipo DESC " +
+                        "LIMIT ? OFFSET ?";
+
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setInt(1, idUsuario);
+            ps.setInt(2, limit);
+            ps.setInt(3, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                List<EquipoDetalle> list = new ArrayList<>();
+                while (rs.next()) {
+                    list.add(mapRowDetalle(rs));
+                }
+                return list;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al listar equipos asignados a usuario", ex);
+        }
+    }
+
+
     // Igual que contarConFiltros, pero buscando también en numero_asignado/imei (equipo_sim)
     public int contarConFiltrosIncluyendoSim(Integer idTipo, Integer idMarca, Integer idModelo,
                                              Integer idEstatus, Integer idUbicacion, String textoLibre) {

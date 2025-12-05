@@ -207,7 +207,7 @@ public class AuthServlet extends HttpServlet {
             s.setAttribute("userId", info.idUsuario);
             s.setAttribute("userEmail", email);
             s.setAttribute("userRolId", info.idRol);
-            resp.sendRedirect(req.getContextPath() + "/equipos");
+            resp.sendRedirect(req.getContextPath() + "/equipos.jsp");
         } catch (Exception ex) {
             flash(req, "flashError", "Error al iniciar sesión. Intenta más tarde.");
             resp.sendRedirect(req.getContextPath() + "/");

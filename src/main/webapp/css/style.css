@@ -158,10 +158,15 @@ thead th{font-weight:600;color:#334155;background:#f1f5f9;position:sticky;top:0;
 tbody tr:nth-child(odd){background:#fbfdff}
 tbody tr:hover{background:#f8fafc}
 
-/* Acciones en una sola línea (columna 7) */
-.table-wrapper table tbody td:nth-child(7){
-    display:flex;align-items:center;gap:.4rem;flex-wrap:nowrap;white-space:nowrap
+/* La columna Acciones es la 9 */
+.table-wrapper table tbody td:nth-child(9){
+    display:flex;
+    align-items:center;
+    gap:.4rem;
+    flex-wrap:nowrap;
+    white-space:nowrap;
 }
+
 
 /* Modales (dialog) */
 dialog{border:1px solid #000;border-radius:.75rem;max-width:820px;width:95%;transform-origin:center top}

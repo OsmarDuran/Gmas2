@@ -205,6 +205,70 @@ public class EquiposServlet extends HttpServlet {
             return;
         }
 
+        // ===== Listado JSON para fetch (tabla + paginación) =====
+        if ("listJson".equals(action)) {
+            resp.setContentType("application/json");
+            resp.setCharacterEncoding("UTF-8");
+
+            Integer idTipo      = parseIntOrNull(req.getParameter("idTipo"));
+            Integer idMarca     = parseIntOrNull(req.getParameter("idMarca"));
+            Integer idModelo    = parseIntOrNull(req.getParameter("idModelo"));
+            Integer idEstatus   = parseIntOrNull(req.getParameter("idEstatus"));
+            Integer idUbicacion = parseIntOrNull(req.getParameter("idUbicacion"));
+            String q            = trimToNull(req.getParameter("q"));
+
+            int pageReq = Math.max(1, parseIntOrDefault(req.getParameter("page"), 1));
+            int limit   = PAGE_SIZE;
+
+            // Mismo cálculo de total que el listado normal (respetando Eliminado)
+            int total;
+            if (idEstatus != null && idEstatus == STATUS_ELIMINADO) {
+                total = 0;
+            } else if (idEstatus == null) {
+                int totalRaw  = equipoDAO.contarConFiltros(idTipo, idMarca, idModelo, null, idUbicacion, q);
+                int elimCount = equipoDAO.contarConFiltros(idTipo, idMarca, idModelo, STATUS_ELIMINADO, idUbicacion, q);
+                total = Math.max(0, totalRaw - elimCount);
+            } else {
+                total = equipoDAO.contarConFiltros(idTipo, idMarca, idModelo, idEstatus, idUbicacion, q);
+            }
+
+            int totalPages = Math.max(1, (int) Math.ceil(total / (double) limit));
+            int page = Math.min(pageReq, totalPages);
+            int offset = (page - 1) * limit;
+
+            // Rellenar página saltando Eliminados igual que en el listado normal
+            List<EquipoDetalle> equipos = new java.util.ArrayList<>();
+            if (!(idEstatus != null && idEstatus == STATUS_ELIMINADO) && total > 0) {
+                int batchOffset = offset;
+                int guard = 0;
+                final int MAX_BATCHES = 50;
+                while (equipos.size() < limit && guard++ < MAX_BATCHES) {
+                    List<EquipoDetalle> lote = equipoDAO.listarConDetalle(
+                            idTipo, idMarca, idModelo, idEstatus, idUbicacion, q, limit, batchOffset);
+                    if (lote == null || lote.isEmpty()) break;
+                    for (EquipoDetalle d : lote) {
+                        if (d.getIdEstatus() != STATUS_ELIMINADO) {
+                            equipos.add(d);
+                            if (equipos.size() >= limit) break;
+                        }
+                    }
+                    batchOffset += limit;
+                }
+            }
+
+            Map<String, Object> out = new HashMap<>();
+            out.put("equipos", equipos);
+            out.put("page", page);
+            out.put("totalPages", totalPages);
+            out.put("total", total);
+            out.put("limit", limit);
+
+            Gson gson = new GsonBuilder().create();
+            resp.getWriter().write(gson.toJson(out));
+            return;
+        }
+
+
 
         // ===== Listado con filtros =====
         Integer idTipo      = parseIntOrNull(req.getParameter("idTipo"));

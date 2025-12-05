@@ -185,6 +185,29 @@ public class AsignacionDAO {
         }
     }
 
+    /**
+     * Devuelve cuántas asignaciones ACTIVAS tiene un usuario
+     * (devuelto_en IS NULL).
+     */
+    public int contarAsignacionesActivasPorUsuario(int idUsuario) {
+        String sql = "SELECT COUNT(*) FROM asignacion " +
+                "WHERE id_usuario = ? AND devuelto_en IS NULL";
+        try (Connection cn = Conexion.getConexion();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setInt(1, idUsuario);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+                return 0;
+            }
+        } catch (SQLException ex) {
+            throw new RuntimeException("Error al contar asignaciones activas del usuario", ex);
+        }
+    }
+
+
     // =========================
     // Mapeo ResultSet -> Bean
     // =========================

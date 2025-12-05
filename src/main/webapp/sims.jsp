@@ -20,7 +20,7 @@
         </div>
     </div>
     <div class="menu">
-        <a href="equipos"><span class="icon fa-solid fa-desktop"></span><span class="text">Equipos</span></a>
+        <a href="equipos.jsp"><span class="icon fa-solid fa-desktop"></span><span class="text">Equipos</span></a>
         <a href="sims" class="active"><span class="icon fa-solid fa-sim-card"></span><span class="text">Sims</span></a>
         <a href="consumibles"><span class="icon fa-solid fa-boxes-stacked"></span><span class="text">Consumibles</span></a>
         <a href="asignaciones.jsp"><span class="icon fa-solid fa-arrow-right-arrow-left"></span><span class="text">Asignaciones</span></a>
